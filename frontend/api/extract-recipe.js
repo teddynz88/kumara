@@ -72,7 +72,7 @@ async function fetchPage(url) {
       'Accept': 'text/plain',
       'X-Return-Format': 'text',
     },
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(12000),
   });
   if (!jinaResponse.ok) {
     throw new Error(`Could not fetch that page (tried direct and via reader). Status: ${jinaResponse.status}`);
@@ -97,9 +97,12 @@ export default async function handler(req, res) {
   }
 
   // Init client inside handler so it always reads the live env var
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
   if (!apiKey) {
     return res.status(500).json({ error: 'Anthropic API key not configured. Add ANTHROPIC_API_KEY to your Vercel environment variables.' });
+  }
+  if (!apiKey.startsWith('sk-ant-')) {
+    return res.status(500).json({ error: `Anthropic API key looks wrong (starts with "${apiKey.slice(0, 8)}…"). It should start with sk-ant-. Check your Vercel environment variables.` });
   }
   const client = new Anthropic({ apiKey });
 
@@ -131,7 +134,7 @@ export default async function handler(req, res) {
   let message;
   try {
     message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       system: `You are a recipe extraction assistant. Extract recipe data from webpage content and return it as a single valid JSON object — no markdown, no explanation, just JSON.
 
