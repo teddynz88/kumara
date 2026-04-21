@@ -1,7 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 // Strip HTML tags and collapse whitespace to get readable text
 function extractText(html) {
   return html
@@ -45,16 +43,9 @@ function extractJsonLd(html) {
   return null;
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { url } = req.body || {};
-  if (!url) return res.status(400).json({ error: 'URL is required' });
-
-  // --- 1. Fetch the webpage ---
-  let html;
+// Fetch page directly, with Jina AI Reader as fallback for blocked sites
+async function fetchPage(url) {
+  // Try direct fetch first
   try {
     const response = await fetch(url, {
       headers: {
@@ -64,15 +55,72 @@ export default async function handler(req, res) {
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    html = await response.text();
+    if (response.ok) {
+      const html = await response.text();
+      return { html, viaJina: false };
+    }
+    // Fall through to Jina on 403/429/etc
+    console.log(`Direct fetch failed (${response.status}), trying Jina reader...`);
   } catch (err) {
-    return res.status(400).json({ error: `Could not fetch that URL: ${err.message}` });
+    console.log(`Direct fetch error: ${err.message}, trying Jina reader...`);
   }
 
-  const photoUrl = extractPhotoUrl(html, url);
-  const jsonLd = extractJsonLd(html);
-  const pageText = extractText(html).slice(0, 12000);
+  // Fallback: Jina AI Reader (free, no key needed — great for sites that block scrapers)
+  const jinaUrl = `https://r.jina.ai/${url}`;
+  const jinaResponse = await fetch(jinaUrl, {
+    headers: {
+      'Accept': 'text/plain',
+      'X-Return-Format': 'text',
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!jinaResponse.ok) {
+    throw new Error(`Could not fetch that page (tried direct and via reader). Status: ${jinaResponse.status}`);
+  }
+  const text = await jinaResponse.text();
+  return { html: null, jinaText: text, viaJina: true };
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'URL is required' });
+
+  // Block Instagram early — it requires login and won't have recipe content
+  if (url.includes('instagram.com')) {
+    return res.status(400).json({
+      error: "Instagram links can't be imported — Instagram requires login to view posts. Try copying the recipe text and entering it manually instead.",
+    });
+  }
+
+  // Init client inside handler so it always reads the live env var
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Anthropic API key not configured. Add ANTHROPIC_API_KEY to your Vercel environment variables.' });
+  }
+  const client = new Anthropic({ apiKey });
+
+  // --- 1. Fetch the webpage ---
+  let html, jinaText, viaJina, photoUrl, jsonLd, pageText;
+  try {
+    ({ html, jinaText, viaJina } = await fetchPage(url));
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  if (viaJina) {
+    // Jina returns clean text — use it directly, no HTML parsing needed
+    photoUrl = null;
+    jsonLd = null;
+    pageText = (jinaText || '').slice(0, 12000);
+  } else {
+    photoUrl = extractPhotoUrl(html, url);
+    jsonLd = extractJsonLd(html);
+    pageText = extractText(html).slice(0, 12000);
+  }
 
   // --- 2. Build context for Claude ---
   const context = jsonLd
