@@ -134,7 +134,7 @@ export default async function handler(req, res) {
   let message;
   try {
     message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-sonnet-4-5',
       max_tokens: 2048,
       system: `You are a recipe extraction assistant. Extract recipe data from webpage content and return it as a single valid JSON object — no markdown, no explanation, just JSON.
 
