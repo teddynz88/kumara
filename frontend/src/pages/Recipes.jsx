@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HiPlus, HiMagnifyingGlass, HiChevronDown, HiStar } from 'react-icons/hi2';
+import { HiPlus, HiMagnifyingGlass, HiChevronDown, HiStar, HiPencil, HiLink } from 'react-icons/hi2';
 import { supabase } from '../supabase';
 import RecipeForm from './RecipeForm';
 import RecipeCard from './RecipeCard';
 import RecipeDetail from './RecipeDetail';
+import RecipeImport from './RecipeImport';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
@@ -92,18 +93,112 @@ export default function Recipes() {
     setSelectedRecipe(null);
   }
 
-  // Form view (new or edit)
-  if (view === 'form' || view === 'edit') {
+  // Add-recipe entry: choose manual or import
+  if (view === 'add') {
     return (
       <div className="flex flex-col min-h-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
           <button onClick={handleFormClose} className="text-sm text-primary font-medium">Cancel</button>
+          <h2 className="text-base font-semibold text-dark-text">Add Recipe</h2>
+          <div className="w-12" />
+        </div>
+        {/* Mode tabs */}
+        <div className="flex border-b border-warm-200 bg-white">
+          <button
+            onClick={() => setView('form')}
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-dark-text/50 hover:text-primary transition-colors"
+          >
+            <HiPencil className="w-4 h-4" /> Enter manually
+          </button>
+          <button
+            onClick={() => setView('import')}
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-dark-text/50 hover:text-primary transition-colors"
+          >
+            <HiLink className="w-4 h-4" /> Import from URL
+          </button>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center p-6 gap-5 text-center">
+          <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+            <button
+              onClick={() => setView('form')}
+              className="flex flex-col items-center gap-3 p-5 bg-white border border-warm-200 rounded-xl hover:border-primary/40 hover:shadow-sm transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <HiPencil className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-dark-text">Manual</p>
+                <p className="text-xs text-dark-text/50 mt-0.5">Type it in yourself</p>
+              </div>
+            </button>
+            <button
+              onClick={() => setView('import')}
+              className="flex flex-col items-center gap-3 p-5 bg-white border border-warm-200 rounded-xl hover:border-primary/40 hover:shadow-sm transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <HiLink className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-dark-text">From URL</p>
+                <p className="text-xs text-dark-text/50 mt-0.5">Paste a recipe link</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Form view (manual entry or edit)
+  if (view === 'form' || view === 'edit') {
+    return (
+      <div className="flex flex-col min-h-full">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
+          <button onClick={() => view === 'edit' ? handleFormClose() : setView('add')} className="text-sm text-primary font-medium">
+            {view === 'edit' ? 'Cancel' : '← Back'}
+          </button>
           <h2 className="text-base font-semibold text-dark-text">
             {view === 'edit' ? 'Edit Recipe' : 'New Recipe'}
           </h2>
           <div className="w-12" />
         </div>
         <RecipeForm onClose={handleFormClose} recipe={view === 'edit' ? selectedRecipe : null} />
+      </div>
+    );
+  }
+
+  // URL import view
+  if (view === 'import') {
+    return (
+      <div className="flex flex-col min-h-full">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
+          <button onClick={() => setView('add')} className="text-sm text-primary font-medium">← Back</button>
+          <h2 className="text-base font-semibold text-dark-text">Import from URL</h2>
+          <div className="w-12" />
+        </div>
+        <RecipeImport
+          onExtracted={(recipe) => {
+            setSelectedRecipe(recipe);
+            setView('form-prefilled');
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Pre-filled form after URL extraction
+  if (view === 'form-prefilled') {
+    return (
+      <div className="flex flex-col min-h-full">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
+          <button onClick={() => setView('import')} className="text-sm text-primary font-medium">← Back</button>
+          <h2 className="text-base font-semibold text-dark-text">Review Recipe</h2>
+          <div className="w-12" />
+        </div>
+        <p className="text-xs text-dark-text/40 text-center py-2 bg-warm-100 border-b border-warm-200">
+          Extracted by AI — check and edit before saving
+        </p>
+        <RecipeForm onClose={handleFormClose} recipe={selectedRecipe} />
       </div>
     );
   }
