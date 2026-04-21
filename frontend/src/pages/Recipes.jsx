@@ -238,7 +238,7 @@ export default function Recipes() {
         <h2 className="text-lg font-semibold text-dark-text">Your recipe library is empty</h2>
         <p className="text-sm text-dark-text/50">Tap + to add your first recipe!</p>
         <button
-          onClick={() => setView('form')}
+          onClick={() => setView('add')}
           className="mt-3 flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary-light transition-colors"
         >
           <HiPlus className="w-5 h-5" /> Add Recipe
@@ -262,7 +262,7 @@ export default function Recipes() {
           {filtered.length} Recipe{filtered.length !== 1 ? 's' : ''}
         </h2>
         <button
-          onClick={() => setView('form')}
+          onClick={() => setView('add')}
           className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-sm hover:bg-primary-light transition-colors"
         >
           <HiPlus className="w-5 h-5" />
