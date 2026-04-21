@@ -8,7 +8,7 @@ const emptyIngredient = () => ({ qty: '', unit: 'g', name: '' });
 const emptyStep = () => ({ text: '' });
 
 export default function RecipeForm({ onClose, recipe }) {
-  const isEdit = !!recipe;
+  const isEdit = !!recipe?.id;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [macrosOpen, setMacrosOpen] = useState(false);
@@ -157,7 +157,8 @@ export default function RecipeForm({ onClose, recipe }) {
       servings: servings || 1,
       prep_time_mins: prepTime ? parseInt(prepTime) : null,
       cook_time_mins: cookTime ? parseInt(cookTime) : null,
-      source_type: 'manual',
+      source_type: recipe?.source_type || 'manual',
+      source_url: recipe?.source_url || null,
       ingredients: ingredients
         .filter(ing => ing.name.trim())
         .map(ing => ({ qty: ing.qty, unit: ing.unit, name: ing.name.trim() })),
