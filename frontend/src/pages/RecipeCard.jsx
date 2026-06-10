@@ -1,24 +1,21 @@
-import { HiHeart, HiClock, HiStar } from 'react-icons/hi2';
+import { Heart, Clock, Star } from 'lucide-react';
 import { supabase } from '../supabase';
+import { KumaraMark } from '../ui';
 
 function PlaceholderImage() {
   return (
-    <div className="w-full h-44 bg-warm-100 flex items-center justify-center">
-      <svg className="w-12 h-12 text-warm-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M7 3v4a1 1 0 0 1-2 0V3m2 0H5m2 0h1M12 3v4a1 1 0 0 1-2 0V3m2 0h-2m2 0h1" strokeLinecap="round" />
-        <path d="M17 3c1.5 0 3 1 3 3s-1 3-3 3h-.5" strokeLinecap="round" />
-        <path d="M17 9v1" strokeLinecap="round" />
-        <path d="M4 11h16l-1.5 9a1 1 0 0 1-1 .85H6.5a1 1 0 0 1-1-.85L4 11z" strokeLinejoin="round" />
-      </svg>
+    <div className="w-full h-40 bg-stone-200/60 flex items-center justify-center text-stone-400">
+      <KumaraMark className="w-12 h-12" />
     </div>
   );
 }
 
-function MacroPill({ label, value }) {
+function MacroStat({ label, value, unit = '' }) {
   if (value == null) return null;
   return (
-    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary/10 text-dark-text text-[10px] font-medium">
-      {value} {label}
+    <span className="inline-flex items-baseline gap-0.5">
+      <span className="font-narrow font-bold text-[13px] text-ink-900 leading-none">{value}{unit}</span>
+      <span className="eyebrow-sm text-[9px] text-ink-600">{label}</span>
     </span>
   );
 }
@@ -41,7 +38,7 @@ function StarRating({ rating, recipeId, onUpdate }) {
           onClick={e => { e.stopPropagation(); setRating(star); }}
           className="transition-colors"
         >
-          <HiStar className={`w-4 h-4 drop-shadow-sm ${star <= (rating || 0) ? 'fill-amber-400 text-amber-400' : 'fill-white/40 text-white/60'}`} />
+          <Star className={`w-4 h-4 ${star <= (rating || 0) ? 'fill-ember-500 text-ember-500' : 'text-sand-50/80'}`} />
         </button>
       ))}
     </div>
@@ -64,7 +61,7 @@ export default function RecipeCard({ recipe, onSelect, onUpdate }) {
   return (
     <div
       onClick={() => onSelect(recipe)}
-      className="bg-white rounded-xl overflow-hidden shadow-sm border border-warm-200/60 cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-sand-100 rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(45,42,36,.06)] cursor-pointer hover:shadow-[0_2px_6px_rgba(45,42,36,.1)] transition-shadow"
     >
       {/* Image */}
       <div className="relative">
@@ -72,7 +69,7 @@ export default function RecipeCard({ recipe, onSelect, onUpdate }) {
           <img
             src={recipe.photo_url}
             alt={recipe.title}
-            className="w-full h-44 object-cover"
+            className="w-full h-40 object-cover"
           />
         ) : (
           <PlaceholderImage />
@@ -80,19 +77,21 @@ export default function RecipeCard({ recipe, onSelect, onUpdate }) {
         {/* Favourite heart */}
         <button
           onClick={toggleFavourite}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-sand-50/85 backdrop-blur-sm flex items-center justify-center shadow-[0_1px_2px_rgba(45,42,36,.06)] hover:bg-sand-50 transition-colors"
         >
-          <HiHeart className={`w-5 h-5 ${recipe.is_favourite ? 'fill-red-500 text-red-500' : 'fill-none text-dark-text/30'}`} />
+          <Heart className={`w-4.5 h-4.5 ${recipe.is_favourite ? 'fill-ember-500 text-ember-500' : 'text-ink-600'}`} />
         </button>
         {/* Total time badge */}
         {(recipe.prep_time_mins || recipe.cook_time_mins) && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-white/80 backdrop-blur-sm text-[11px] font-medium text-dark-text shadow-sm">
-            <HiClock className="w-3.5 h-3.5" />
-            {(recipe.prep_time_mins || 0) + (recipe.cook_time_mins || 0)} min
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-sand-50/85 backdrop-blur-sm shadow-[0_1px_2px_rgba(45,42,36,.06)]">
+            <Clock className="w-3.5 h-3.5 text-ink-600" />
+            <span className="font-narrow font-bold text-[11px] text-ink-900">
+              {(recipe.prep_time_mins || 0) + (recipe.cook_time_mins || 0)} min
+            </span>
           </div>
         )}
         {/* Star rating overlay */}
-        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/50 to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-ink-900/45 to-transparent">
           <StarRating
             rating={recipe.rating}
             recipeId={recipe.id}
@@ -103,18 +102,17 @@ export default function RecipeCard({ recipe, onSelect, onUpdate }) {
 
       {/* Content */}
       <div className="p-3 flex flex-col gap-1.5">
-        <h3 className="text-base font-bold text-dark-text line-clamp-2 leading-snug">{recipe.title}</h3>
+        <h3 className="font-display text-xl leading-[1.1] text-ink-900 line-clamp-2">{recipe.title}</h3>
 
-        {/* Macro pills */}
+        {/* Macro strip */}
         {hasMacros && (
-          <div className="flex flex-wrap gap-1">
-            <MacroPill label="cal" value={recipe.calories} />
-            <MacroPill label="g P" value={recipe.protein_g} />
-            <MacroPill label="g C" value={recipe.carbs_g} />
-            <MacroPill label="g F" value={recipe.fat_g} />
+          <div className="flex flex-wrap gap-x-2.5 gap-y-1 pt-0.5">
+            <MacroStat label="cal" value={recipe.calories} />
+            <MacroStat label="prot" value={recipe.protein_g} unit="g" />
+            <MacroStat label="carb" value={recipe.carbs_g} unit="g" />
+            <MacroStat label="fat" value={recipe.fat_g} unit="g" />
           </div>
         )}
-
       </div>
     </div>
   );

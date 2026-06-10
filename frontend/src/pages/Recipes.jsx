@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { HiPlus, HiMagnifyingGlass, HiChevronDown, HiStar, HiPencil, HiLink } from 'react-icons/hi2';
+import { Plus, Search, ChevronDown, Star, PencilLine, Link2, FileText } from 'lucide-react';
 import { supabase } from '../supabase';
 import RecipeForm from './RecipeForm';
 import RecipeCard from './RecipeCard';
 import RecipeDetail from './RecipeDetail';
 import RecipeImport from './RecipeImport';
+import { chip, btnGhost, input } from '../ui';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
@@ -12,6 +13,26 @@ const SORT_OPTIONS = [
   { value: 'cooked', label: 'Most cooked' },
   { value: 'alpha', label: 'Alphabetical' },
 ];
+
+// Meal-type filter chips (brief §2): All / Breakfast / Lunch / Snack / Dinner / Favourites
+const MEAL_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'snack', label: 'Snack' },
+  { value: 'dinner', label: 'Dinner' },
+  { value: 'favourites', label: 'Favourites' },
+];
+
+function PageHeader({ title, onBack, backLabel = 'Back' }) {
+  return (
+    <div className="grad-header-wash flex items-center justify-between px-4 py-3 border-b border-stone-200 sticky top-0 z-10">
+      <button onClick={onBack} className={`${btnGhost} w-16 justify-start`}>{backLabel}</button>
+      <h2 className="font-display text-xl text-ink-900">{title}</h2>
+      <div className="w-16" />
+    </div>
+  );
+}
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
@@ -34,11 +55,9 @@ export default function Recipes() {
 
   useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
 
-  // Filter and sort
   const filtered = useMemo(() => {
     let result = recipes;
 
-    // Search by title and tags
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(r =>
@@ -47,19 +66,16 @@ export default function Recipes() {
       );
     }
 
-    // Filter by tag or favourites
     if (activeFilter === 'favourites') {
       result = result.filter(r => r.is_favourite);
     } else if (activeFilter !== 'all') {
       result = result.filter(r => r.tags?.includes(activeFilter));
     }
 
-    // Filter by minimum rating
     if (minRating > 0) {
       result = result.filter(r => (r.rating || 0) >= minRating);
     }
 
-    // Sort
     result = [...result].sort((a, b) => {
       switch (sort) {
         case 'rated':
@@ -93,56 +109,34 @@ export default function Recipes() {
     setSelectedRecipe(null);
   }
 
-  // Add-recipe entry: choose manual or import
+  // Add-recipe entry: choose manual, URL, or PDF
   if (view === 'add') {
+    const options = [
+      { icon: PencilLine, title: 'Manual', caption: 'Type it in yourself', action: () => setView('form') },
+      { icon: Link2, title: 'From URL', caption: 'Paste a recipe link', action: () => setView('import-url') },
+      { icon: FileText, title: 'From PDF', caption: 'Upload a recipe PDF', action: () => setView('import-pdf') },
+    ];
     return (
       <div className="flex flex-col min-h-full">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
-          <button onClick={handleFormClose} className="text-sm text-primary font-medium">Cancel</button>
-          <h2 className="text-base font-semibold text-dark-text">Add Recipe</h2>
-          <div className="w-12" />
-        </div>
-        {/* Mode tabs */}
-        <div className="flex border-b border-warm-200 bg-white">
-          <button
-            onClick={() => setView('form')}
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-dark-text/50 hover:text-primary transition-colors"
-          >
-            <HiPencil className="w-4 h-4" /> Enter manually
-          </button>
-          <button
-            onClick={() => setView('import')}
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-dark-text/50 hover:text-primary transition-colors"
-          >
-            <HiLink className="w-4 h-4" /> Import from URL
-          </button>
-        </div>
+        <PageHeader title="Add Recipe" onBack={handleFormClose} backLabel="Cancel" />
         <div className="flex flex-1 flex-col items-center justify-center p-6 gap-5 text-center">
-          <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
-            <button
-              onClick={() => setView('form')}
-              className="flex flex-col items-center gap-3 p-5 bg-white border border-warm-200 rounded-xl hover:border-primary/40 hover:shadow-sm transition-all"
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <HiPencil className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-dark-text">Manual</p>
-                <p className="text-xs text-dark-text/50 mt-0.5">Type it in yourself</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setView('import')}
-              className="flex flex-col items-center gap-3 p-5 bg-white border border-warm-200 rounded-xl hover:border-primary/40 hover:shadow-sm transition-all"
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <HiLink className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-dark-text">From URL</p>
-                <p className="text-xs text-dark-text/50 mt-0.5">Paste a recipe link</p>
-              </div>
-            </button>
+          <p className="type-h2 text-ink-900">How would you like to add it?</p>
+          <div className="grid grid-cols-1 gap-3 w-full max-w-xs">
+            {options.map(({ icon: Icon, title, caption, action }) => (
+              <button
+                key={title}
+                onClick={action}
+                className="flex items-center gap-4 p-4 bg-sand-100 rounded-2xl shadow-[0_1px_2px_rgba(45,42,36,.06)] hover:bg-stone-200/60 transition-colors text-left"
+              >
+                <span className="w-11 h-11 rounded-xl bg-stone-200 text-plum-700 flex items-center justify-center shrink-0">
+                  <Icon className="w-5 h-5" />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-ink-900">{title}</span>
+                  <span className="block text-xs text-ink-600 mt-0.5">{caption}</span>
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -153,52 +147,45 @@ export default function Recipes() {
   if (view === 'form' || view === 'edit') {
     return (
       <div className="flex flex-col min-h-full">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
-          <button onClick={() => view === 'edit' ? handleFormClose() : setView('add')} className="text-sm text-primary font-medium">
-            {view === 'edit' ? 'Cancel' : '← Back'}
-          </button>
-          <h2 className="text-base font-semibold text-dark-text">
-            {view === 'edit' ? 'Edit Recipe' : 'New Recipe'}
-          </h2>
-          <div className="w-12" />
-        </div>
+        <PageHeader
+          title={view === 'edit' ? 'Edit Recipe' : 'New Recipe'}
+          onBack={() => view === 'edit' ? handleFormClose() : setView('add')}
+          backLabel={view === 'edit' ? 'Cancel' : 'Back'}
+        />
         <RecipeForm onClose={handleFormClose} recipe={view === 'edit' ? selectedRecipe : null} />
       </div>
     );
   }
 
-  // URL import view
-  if (view === 'import') {
+  // Import views (URL or PDF) — shared extract → review → save flow
+  if (view === 'import-url' || view === 'import-pdf') {
     return (
       <div className="flex flex-col min-h-full">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
-          <button onClick={() => setView('add')} className="text-sm text-primary font-medium">← Back</button>
-          <h2 className="text-base font-semibold text-dark-text">Import from URL</h2>
-          <div className="w-12" />
-        </div>
+        <PageHeader
+          title={view === 'import-pdf' ? 'Import from PDF' : 'Import from URL'}
+          onBack={() => setView('add')}
+        />
         <RecipeImport
+          mode={view === 'import-pdf' ? 'pdf' : 'url'}
           onExtracted={(recipe) => {
             setSelectedRecipe(recipe);
-            setView('form-prefilled');
+            setView('review');
           }}
         />
       </div>
     );
   }
 
-  // Pre-filled form after URL extraction
-  if (view === 'form-prefilled') {
+  // Review screen after extraction — every field editable, nothing saved yet
+  if (view === 'review') {
     return (
       <div className="flex flex-col min-h-full">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-200 bg-white sticky top-0 z-10">
-          <button onClick={() => setView('import')} className="text-sm text-primary font-medium">← Back</button>
-          <h2 className="text-base font-semibold text-dark-text">Review Recipe</h2>
-          <div className="w-12" />
+        <PageHeader title="Review" onBack={() => setView('add')} />
+        <div className="grad-hero px-4 py-5 border-b border-stone-200">
+          <p className="type-h2 text-ink-900">Here&rsquo;s what we found</p>
+          <p className="text-sm text-ink-600 mt-1">Check everything before saving — edit anything that looks off.</p>
         </div>
-        <p className="text-xs text-dark-text/40 text-center py-2 bg-warm-100 border-b border-warm-200">
-          Extracted by AI — check and edit before saving
-        </p>
-        <RecipeForm onClose={handleFormClose} recipe={selectedRecipe} />
+        <RecipeForm onClose={handleFormClose} recipe={selectedRecipe} isReview />
       </div>
     );
   }
@@ -219,125 +206,103 @@ export default function Recipes() {
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-plum-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (recipes.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-6 gap-3 text-center">
-        <div className="w-16 h-16 rounded-full bg-warm-100 flex items-center justify-center mb-2">
-          <svg className="w-8 h-8 text-warm-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M7 3v4a1 1 0 0 1-2 0V3m2 0H5m2 0h1M12 3v4a1 1 0 0 1-2 0V3m2 0h-2m2 0h1" strokeLinecap="round" />
-            <path d="M17 3c1.5 0 3 1 3 3s-1 3-3 3h-.5" strokeLinecap="round" />
-            <path d="M17 9v1" strokeLinecap="round" />
-            <path d="M4 11h16l-1.5 9a1 1 0 0 1-1 .85H6.5a1 1 0 0 1-1-.85L4 11z" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <h2 className="text-lg font-semibold text-dark-text">Your recipe library is empty</h2>
-        <p className="text-sm text-dark-text/50">Tap + to add your first recipe!</p>
-        <button
-          onClick={() => setView('add')}
-          className="mt-3 flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary-light transition-colors"
-        >
-          <HiPlus className="w-5 h-5" /> Add Recipe
+      <div className="flex flex-1 flex-col items-center justify-center p-6 gap-3 text-center min-h-full">
+        <h2 className="type-h2 text-ink-900">Your library is empty</h2>
+        <p className="text-sm text-ink-600">Add your first recipe and start cooking.</p>
+        <button onClick={() => setView('add')} className="grad-cta text-sand-50 font-semibold text-sm rounded-xl px-5 py-3 mt-3 inline-flex items-center gap-2">
+          <Plus className="w-5 h-5" /> Add Recipe
         </button>
       </div>
     );
   }
 
-  const chipClass = (isActive) =>
-    `px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-      isActive
-        ? 'bg-primary text-white'
-        : 'bg-warm-100 text-dark-text/60 hover:bg-warm-200'
-    }`;
-
   return (
     <div className="p-4">
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-dark-text">
-          {filtered.length} Recipe{filtered.length !== 1 ? 's' : ''}
-        </h2>
+        <h2 className="type-h1 text-[28px] text-ink-900">Recipe Library</h2>
         <button
           onClick={() => setView('add')}
-          className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center shadow-sm hover:bg-primary-light transition-colors"
+          className="grad-cta w-10 h-10 rounded-full text-sand-50 flex items-center justify-center shadow-[0_1px_2px_rgba(45,42,36,.06)]"
         >
-          <HiPlus className="w-5 h-5" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
+      <p className="eyebrow-sm text-ink-600 mb-3">{filtered.length} recipe{filtered.length !== 1 ? 's' : ''}</p>
 
       {/* Search bar + clear */}
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1">
-          <HiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-text/30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or tag..."
-            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-warm-200 bg-white text-sm text-dark-text placeholder:text-dark-text/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className={`${input} pl-9`}
           />
         </div>
         {(search || activeFilter !== 'all' || minRating > 0) && (
           <button
             onClick={() => { setSearch(''); setActiveFilter('all'); setMinRating(0); }}
-            className="text-xs text-primary font-medium whitespace-nowrap shrink-0"
+            className={`${btnGhost} text-xs whitespace-nowrap shrink-0`}
           >
-            Clear filters
+            Clear
           </button>
         )}
       </div>
 
-      {/* Sort + Filter row */}
-      <div className="flex items-center gap-2 mb-4">
-        {/* Sort dropdown */}
+      {/* Meal-type filter chips */}
+      <div className="flex gap-1.5 mb-3 overflow-x-auto no-scrollbar -mx-4 px-4">
+        {MEAL_FILTERS.map(f => (
+          <button key={f.value} onClick={() => setActiveFilter(f.value)} className={chip(activeFilter === f.value)}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sort + rating filter row */}
+      <div className="flex items-center gap-3 mb-4">
         <div className="relative shrink-0">
           <select
             value={sort}
             onChange={e => setSort(e.target.value)}
-            className="appearance-none bg-white border border-warm-200 rounded-lg pl-3 pr-7 py-1.5 text-xs font-medium text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="appearance-none bg-stone-200/60 rounded-xl pl-3 pr-7 py-1.5 text-xs font-medium text-ink-900 focus:outline-none focus:ring-2 focus:ring-plum-500"
           >
             {SORT_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <HiChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dark-text/40 pointer-events-none" />
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-600 pointer-events-none" />
         </div>
 
-        {/* Filter chips */}
-        <div className="flex gap-1.5 items-center">
-          <button onClick={() => setActiveFilter('all')} className={chipClass(activeFilter === 'all')}>
-            All
-          </button>
-          <button onClick={() => setActiveFilter('favourites')} className={chipClass(activeFilter === 'favourites')}>
-            Favourites
-          </button>
-
-          {/* Star rating filter */}
-          <div className="flex gap-0.5 ml-1">
-            {[1, 2, 3, 4, 5].map(star => (
-              <button
-                key={star}
-                onClick={() => setMinRating(star === minRating ? 0 : star)}
-                className="transition-colors"
-              >
-                <HiStar className={`w-5 h-5 ${star <= minRating ? 'fill-amber-400 text-amber-400' : 'fill-warm-200 text-warm-200'}`} />
-              </button>
-            ))}
-          </div>
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map(star => (
+            <button
+              key={star}
+              onClick={() => setMinRating(star === minRating ? 0 : star)}
+              className="transition-colors"
+            >
+              <Star className={`w-5 h-5 ${star <= minRating ? 'fill-ember-500 text-ember-500' : 'text-stone-400'}`} />
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Results */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-dark-text/50">No recipes match your search.</p>
+          <p className="font-display italic text-xl text-ink-600">Nothing matches.</p>
           <button
             onClick={() => { setSearch(''); setActiveFilter('all'); setMinRating(0); }}
-            className="mt-2 text-sm text-primary font-medium"
+            className={`${btnGhost} mt-2`}
           >
             Clear filters
           </button>
