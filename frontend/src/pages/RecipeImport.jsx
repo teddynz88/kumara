@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link2, ArrowRight, CircleAlert, FileText, Upload } from 'lucide-react';
-import { input, btnGhost } from '../ui';
+import { input } from '../ui';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
