@@ -1,0 +1,9 @@
+# Raw scoping material (zips, spreadsheets) — not source code
+Scoping Files/
+
+# Backend secrets + Python artifacts
+backend/.env
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
