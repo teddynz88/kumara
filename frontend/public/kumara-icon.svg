@@ -1,0 +1,13 @@
+<svg viewBox="0 0 32 32" width="256" height="256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="7" fill="#E2DACA"/>
+  <g stroke="#5E5278" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <!-- tuber body -->
+    <path d="M6.5 23.8C13.5 26.6 24.2 19.8 24.5 11.6C18.6 8.4 6.3 16.4 6.5 23.8Z"/>
+    <!-- sprout nub -->
+    <path d="M24.5 11.6C25 10.2 25.5 9 26.2 7.9"/>
+    <!-- eyes -->
+    <path d="M11.6 17.6L13 16.6"/>
+    <path d="M16.4 19.4L17.8 18.4"/>
+    <path d="M12.2 21.4L13.2 20.7"/>
+  </g>
+</svg>
