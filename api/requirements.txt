@@ -1,0 +1,10 @@
+# Runtime deps for the Vercel Python function (no uvicorn/pytest needed —
+# Vercel provides the ASGI server). Keep in sync with backend/requirements.txt.
+fastapi>=0.115
+httpx>=0.27
+pydantic>=2.9
+anthropic>=0.90
+pdfplumber>=0.11
+python-multipart>=0.0.12
+python-dotenv>=1.0
+beautifulsoup4>=4.12

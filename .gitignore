@@ -7,3 +7,7 @@ backend/.venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Vercel project link
+.vercel/
+.vercel
