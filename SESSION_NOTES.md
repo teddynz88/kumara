@@ -4,9 +4,17 @@ Built by Claude (Fable) from `Kūmara — Overnight MVP Build Brief v1.1`.
 All 12 objectives (including both stretch goals) are code-complete and
 committed, one commit per objective (or tight group — see `git log`).
 
+> **UPDATE 11 June, verified with Matt:** all three setup steps below are
+> DONE (Supabase restored, migration + RLS fix run, key in backend/.env)
+> and the full acceptance walkthrough passed live — URL import, PDF import
+> (Bec December PDF), save-to-library, planner persistence, "no fish"
+> generation (hardened after a live catch), shopping list build. The app
+> runs at http://localhost:5173 with the backend on :8000. Remaining open
+> items are in "Loose ends" only.
+
 ---
 
-## ⚠️ The three things to look at first
+## ⚠️ The three things to look at first (✅ all done 11 June)
 
 ### 1. The Supabase project is PAUSED — restore it (1 click)
 
