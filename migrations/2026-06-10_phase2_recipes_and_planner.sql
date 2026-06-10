@@ -99,7 +99,12 @@ create table if not exists shopping_list_items (
 create index if not exists shopping_list_items_week_idx
   on shopping_list_items (week_start);
 
--- Note on row-level security: this is a single-household app and the
--- existing recipes table runs without RLS (the anon key reads/writes
--- directly). The new tables follow the same model for consistency.
--- Revisit if the app ever gets a second user or public exposure.
+-- Row-level security: this is a single-household app and the existing
+-- recipes table runs without RLS (the anon key reads/writes directly).
+-- The Supabase SQL editor auto-enables RLS on newly created tables,
+-- which would silently block every write from the app - so explicitly
+-- match the recipes model. Revisit if the app ever gets a second user
+-- or public exposure.
+alter table meal_plan_entries disable row level security;
+alter table nutrition_targets disable row level security;
+alter table shopping_list_items disable row level security;

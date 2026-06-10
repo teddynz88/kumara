@@ -84,7 +84,11 @@ export default function MealPlan() {
       ...prev,
       [keyOf(day, slot)]: { entry_type: entryType, recipe_id: recipeId },
     }));
-    saveSlot(weekStart, day, slot, entryType, recipeId);
+    // A null result means the write was rejected (e.g. missing table or RLS)
+    // — surface it rather than letting the slot silently evaporate on reload.
+    saveSlot(weekStart, day, slot, entryType, recipeId).then(row => {
+      if (!row) setPersisted(false);
+    });
   }
 
   function removeSlotEntry(day, slot) {
@@ -228,8 +232,10 @@ export default function MealPlan() {
       <h2 className="type-h1 text-[28px] text-ink-900 mb-3">Meal Plan</h2>
 
       {!persisted && (
-        <p className="text-xs text-ink-600 bg-sand-100 rounded-xl px-3 py-2 mb-3">
-          {MIGRATION_HINT} Until then, changes here aren&rsquo;t saved.
+        <p className="text-xs text-clay-500 bg-clay-500/10 rounded-xl px-3 py-2 mb-3">
+          Changes here aren&rsquo;t being saved to the database. {MIGRATION_HINT}{' '}
+          If the migration has run, check row-level security is disabled on the
+          planner tables (see the end of the migration file).
         </p>
       )}
 
