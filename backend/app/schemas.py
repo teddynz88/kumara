@@ -90,6 +90,10 @@ class PlanEntry(BaseModel):
 
 
 class GeneratedPlan(BaseModel):
+    # Listed first on purpose: the model enumerates which library recipes the
+    # user's request rules out BEFORE it assigns slots, which makes it far
+    # less likely to slip an excluded recipe into the plan.
+    excluded_recipe_ids: list[str] = Field(default_factory=list)
     entries: list[PlanEntry]
 
 

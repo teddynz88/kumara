@@ -78,9 +78,16 @@ Hard rules:
 slots, "dinner" in dinner, etc.). A snack slot suits recipes tagged snack or baking.
 - Vary the week: do not use the same recipe twice unless the library is too small to avoid it.
 - Prefer higher-rated and favourited recipes.
-- Respect the user's request strictly. For example "no fish" means exclude any recipe whose \
-title, tags, or ingredients mention fish or a fish species; "easy week" means prefer recipes \
-with shorter prep+cook times; "high protein" means prefer higher protein per serve.
+- Dietary exclusions in the user's request are HARD constraints and outrank every other rule, \
+including variety and macro preferences. Repeat an allowed recipe rather than ever using an \
+excluded one. "No fish" excludes any recipe whose title, tags, OR INGREDIENT LIST mentions fish \
+or any fish/seafood species or product (tuna, salmon, snapper, prawns, anchovies, fish sauce, \
+etc.). The same logic applies to any other exclusion ("no dairy", "no pork", ...).
+- Work in two passes. First, fill excluded_recipe_ids with the id of every library recipe the \
+user's request rules out (empty if no exclusions). Only then assign slots, never using an id \
+you just excluded.
+- Softer preferences: "easy week" means prefer shorter prep+cook times; "high protein" means \
+prefer higher protein per serve.
 - If daily macro targets are given, aim for daily totals near them across that day's slots."""
 
 
