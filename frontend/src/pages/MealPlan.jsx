@@ -1,22 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  ChevronLeft, ChevronRight, Plus, X, Search, Star, Heart,
+  ChevronLeft, ChevronRight, Plus, X, Search, Star, Heart, BookOpen,
   Sparkles, Wind, ShoppingBag, UtensilsCrossed, Trash2, Undo2, Hourglass,
-  Egg, Sandwich, Cookie, Utensils,
+  EggFried, Sandwich, Cookie, Utensils, CircleAlert,
 } from 'lucide-react';
 import { supabase } from '../supabase';
-import { MIGRATION_HINT } from '../schema';
 import { getMonday, addDays, isoDate, formatWeekLabel, todayIndexInWeek } from '../lib/dates';
 import {
   SLOTS, keyOf, loadWeek, saveSlot, clearSlot, clearWeek as clearWeekDb,
   generatePlan,
 } from '../lib/planApi';
-import { input, btnGhost, MacroChip } from '../ui';
+import { input, btnGhost } from '../ui';
+import RecipeDetail from './RecipeDetail';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const SLOT_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
 // Column-header icons (the labels were truncating at this size).
-const SLOT_ICONS = { breakfast: Egg, lunch: Sandwich, snack: Cookie, dinner: Utensils };
+const SLOT_ICONS = { breakfast: EggFried, lunch: Sandwich, snack: Cookie, dinner: Utensils };
 
 // Non-recipe slot types — line icons, never emoji (brief §6.3).
 const SPECIAL_TYPES = [
@@ -28,12 +28,34 @@ const SPECIAL_TYPES = [
 const specialIcon = (type) => SPECIAL_TYPES.find(s => s.value === type)?.icon || Wind;
 
 const MACRO_FIELDS = [
-  { key: 'calories', label: 'cal', target: 'calories' },
-  { key: 'protein_g', label: 'prot', target: 'protein_g', unit: 'g' },
-  { key: 'carbs_g', label: 'carb', target: 'carbs_g', unit: 'g' },
-  { key: 'fat_g', label: 'fat', target: 'fat_g', unit: 'g' },
-  { key: 'fibre_g', label: 'fib', target: 'fibre_g', unit: 'g' },
+  { key: 'calories', label: 'cal' },
+  { key: 'protein_g', label: 'prot', unit: 'g' },
+  { key: 'carbs_g', label: 'carb', unit: 'g' },
+  { key: 'fat_g', label: 'fat', unit: 'g' },
+  { key: 'fibre_g', label: 'fib', unit: 'g' },
 ];
+
+// Soft alternating purple/orange per macro.
+const MACRO_TEXT = {
+  cal: 'text-ember-600', prot: 'text-plum-700', carb: 'text-ember-600',
+  fat: 'text-plum-700', fib: 'text-ember-600',
+};
+
+// Five macros spread evenly across one line under the day's recipes.
+function MacroStrip({ totals }) {
+  return (
+    <div className="grid grid-cols-5 gap-1">
+      {MACRO_FIELDS.map(f => (
+        <div key={f.key} className="text-center leading-none">
+          <div className={`font-narrow font-bold text-[13px] ${MACRO_TEXT[f.label]}`}>
+            {totals[f.key] == null ? '—' : Math.round(totals[f.key])}{f.unit || ''}
+          </div>
+          <div className="font-narrow text-[8px] uppercase tracking-[0.08em] text-ink-600 mt-0.5">{f.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function MealPlan() {
   const [monday, setMonday] = useState(() => getMonday());
@@ -46,7 +68,9 @@ export default function MealPlan() {
 
   const [activeSlot, setActiveSlot] = useState(null);   // {day, slot} for the action sheet
   const [picking, setPicking] = useState(false);        // recipe picker open
+  const [viewRecipe, setViewRecipe] = useState(null);   // recipe shown in the detail overlay
   const [search, setSearch] = useState('');
+  const [saveError, setSaveError] = useState(null);
 
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -86,10 +110,16 @@ export default function MealPlan() {
       ...prev,
       [keyOf(day, slot)]: { entry_type: entryType, recipe_id: recipeId },
     }));
-    // A null result means the write was rejected (e.g. missing table or RLS)
-    // — surface it rather than letting the slot silently evaporate on reload.
+    setSaveError(null);
+    // A null result means the write was rejected — surface a precise, honest
+    // message rather than letting the slot silently evaporate on reload.
     saveSlot(weekStart, day, slot, entryType, recipeId).then(row => {
-      if (!row) setPersisted(false);
+      if (!row) {
+        setSaveError(
+          `Couldn't save that ${entryType} slot. If you just started using a new slot type, ` +
+          `run the latest migration (migrations/2026-06-11_fasting_and_pack_source.sql) in Supabase.`
+        );
+      }
     });
   }
 
@@ -220,6 +250,11 @@ export default function MealPlan() {
     setSearch('');
   }
 
+  const activeEntry = activeSlot ? entries[keyOf(activeSlot.day, activeSlot.slot)] : null;
+  const activeRecipe = activeEntry?.entry_type === 'recipe'
+    ? recipesById[String(activeEntry.recipe_id)]
+    : null;
+
   // --- Rendering ---
   if (loading) {
     return (
@@ -235,10 +270,17 @@ export default function MealPlan() {
 
       {!persisted && (
         <p className="text-xs text-clay-500 bg-clay-500/10 rounded-xl px-3 py-2 mb-3">
-          Changes here aren&rsquo;t being saved to the database. {MIGRATION_HINT}{' '}
-          If the migration has run, check row-level security is disabled on the
-          planner tables (see the end of the migration file).
+          The planner can&rsquo;t reach its database table, so changes here won&rsquo;t
+          be saved. Run the latest Kūmara migrations in Supabase, then refresh.
         </p>
+      )}
+
+      {saveError && (
+        <div className="flex gap-2 items-start text-xs text-clay-500 bg-clay-500/10 rounded-xl px-3 py-2 mb-3">
+          <CircleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+          <span className="flex-1">{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="shrink-0 font-semibold">Dismiss</button>
+        </div>
       )}
 
       {/* Week navigation */}
@@ -352,26 +394,29 @@ export default function MealPlan() {
                     );
                   }
                   if (entry.entry_type !== 'recipe') {
+                    // Non-recipe slots: lighter/airier than recipe cards.
                     const Icon = specialIcon(entry.entry_type);
                     return (
                       <button
                         key={slot}
                         onClick={() => setActiveSlot({ day, slot })}
-                        className="min-h-[3.5rem] rounded-xl bg-stone-200/70 flex flex-col items-center justify-center gap-0.5 text-ink-600 px-1"
+                        className="min-h-[3.5rem] rounded-xl bg-sand-50 border border-stone-200/50 flex flex-col items-center justify-center gap-0.5 text-ink-600 px-1"
                       >
                         <Icon className="w-4 h-4" />
-                        <span className="text-[9px] font-medium capitalize">{entry.entry_type}</span>
+                        <span className="text-[10px] font-medium capitalize">{entry.entry_type}</span>
                       </button>
                     );
                   }
+                  // Recipe slots: more present than non-recipe cards. Sans font
+                  // (matches the slot-type labels — easier to read than serif here).
                   const recipe = recipesById[String(entry.recipe_id)];
                   return (
                     <button
                       key={slot}
                       onClick={() => setActiveSlot({ day, slot })}
-                      className="min-h-[3.5rem] rounded-xl bg-sand-50 shadow-[0_1px_2px_rgba(45,42,36,.06)] flex flex-col items-center justify-center px-1 py-1 text-center"
+                      className="min-h-[3.5rem] rounded-xl bg-sand-100 shadow-[0_1px_2px_rgba(45,42,36,.08)] flex flex-col items-center justify-center px-1 py-1 text-center"
                     >
-                      <span className="font-display text-[11px] leading-[1.15] text-ink-900 line-clamp-3">
+                      <span className="text-[10px] font-medium leading-tight text-ink-900 line-clamp-3">
                         {recipe?.title || '…'}
                       </span>
                     </button>
@@ -381,10 +426,8 @@ export default function MealPlan() {
 
               {/* Per-day rollup — only when the day has recipe slots */}
               {totals.count > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1.5 px-1 pb-0.5">
-                  {MACRO_FIELDS.map(f => (
-                    <MacroChip key={f.key} label={f.label} value={totals[f.key]} unit={f.unit || ''} />
-                  ))}
+                <div className="mt-2 px-1 pb-0.5">
+                  <MacroStrip totals={totals} />
                 </div>
               )}
             </div>
@@ -395,12 +438,8 @@ export default function MealPlan() {
       {/* Week summary */}
       {weekAverage && (
         <div className="bg-sand-100 rounded-2xl p-4 mt-4 shadow-[0_1px_2px_rgba(45,42,36,.06)]">
-          <p className="eyebrow text-ink-600 mb-2">This week · daily average</p>
-          <div className="flex flex-wrap gap-1.5">
-            {MACRO_FIELDS.map(f => (
-              <MacroChip key={f.key} label={f.label} value={weekAverage[f.key]} unit={f.unit || ''} />
-            ))}
-          </div>
+          <p className="eyebrow text-ink-600 mb-3">This week · daily average</p>
+          <MacroStrip totals={weekAverage} />
         </div>
       )}
 
@@ -420,28 +459,57 @@ export default function MealPlan() {
               </button>
             </div>
 
-            {entries[keyOf(activeSlot.day, activeSlot.slot)] && (
-              <button
-                onClick={() => { removeSlotEntry(activeSlot.day, activeSlot.slot); closeSheets(); }}
-                className="w-full mb-2 py-3 rounded-xl border border-clay-500/40 text-clay-500 text-sm font-semibold hover:bg-clay-500/10 inline-flex items-center justify-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" /> Remove from slot
-              </button>
+            {activeRecipe ? (
+              // A recipe is in this slot: lead with viewing it.
+              <>
+                <p className="text-base font-semibold text-ink-900 mb-3 leading-snug">{activeRecipe.title}</p>
+                <button
+                  onClick={() => { setViewRecipe(activeRecipe); closeSheets(); }}
+                  className="grad-cta w-full py-3 rounded-xl text-sand-50 font-semibold text-sm mb-2 inline-flex items-center justify-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" /> View recipe
+                </button>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button
+                    onClick={() => setPicking(true)}
+                    className="py-2.5 rounded-xl border border-stone-200 text-ink-900 text-sm font-semibold hover:bg-sand-100 inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Swap
+                  </button>
+                  <button
+                    onClick={() => { removeSlotEntry(activeSlot.day, activeSlot.slot); closeSheets(); }}
+                    className="py-2.5 rounded-xl border border-clay-500/40 text-clay-500 text-sm font-semibold hover:bg-clay-500/10 inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="w-4 h-4" /> Remove
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {activeEntry && (
+                  <button
+                    onClick={() => { removeSlotEntry(activeSlot.day, activeSlot.slot); closeSheets(); }}
+                    className="w-full mb-2 py-3 rounded-xl border border-clay-500/40 text-clay-500 text-sm font-semibold hover:bg-clay-500/10 inline-flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" /> Remove from slot
+                  </button>
+                )}
+                <button
+                  onClick={() => setPicking(true)}
+                  className="grad-cta w-full py-3 rounded-xl text-sand-50 font-semibold text-sm mb-4 inline-flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Pick a recipe
+                </button>
+              </>
             )}
 
-            <button
-              onClick={() => setPicking(true)}
-              className="grad-cta w-full py-3 rounded-xl text-sand-50 font-semibold text-sm mb-2 inline-flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> Pick a recipe
-            </button>
-
+            <p className="eyebrow-sm text-ink-600 mb-2">Or mark as</p>
             <div className="grid grid-cols-2 gap-2">
               {SPECIAL_TYPES.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
                   onClick={() => { setSlotEntry(activeSlot.day, activeSlot.slot, value); closeSheets(); }}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-stone-200/70 text-ink-600 hover:bg-stone-200 transition-colors"
+                  className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-sand-100 text-ink-600 hover:bg-stone-200/70 transition-colors"
                 >
                   <Icon className="w-5 h-5" />
                   <span className="text-xs font-medium">{label}</span>
@@ -514,6 +582,15 @@ export default function MealPlan() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recipe detail overlay (opened from a recipe slot's "View recipe") */}
+      {viewRecipe && (
+        <div className="fixed inset-0 z-40 bg-sand-50 overflow-y-auto">
+          <div className="max-w-md mx-auto min-h-full">
+            <RecipeDetail recipe={viewRecipe} onBack={() => setViewRecipe(null)} hideActions />
           </div>
         </div>
       )}

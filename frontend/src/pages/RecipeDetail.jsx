@@ -22,7 +22,7 @@ export function getIngredientGroups(recipe) {
   return [];
 }
 
-export default function RecipeDetail({ recipe: initial, onBack, onDeleted, onEdit }) {
+export default function RecipeDetail({ recipe: initial, onBack, onDeleted, onEdit, hideActions = false }) {
   const [recipe, setRecipe] = useState(initial);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -70,14 +70,16 @@ export default function RecipeDetail({ recipe: initial, onBack, onDeleted, onEdi
         <button onClick={onBack} className={btnGhost}>
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <div className="flex items-center gap-2">
-          <button onClick={() => onEdit(recipe)} className="p-2 text-plum-500 hover:bg-sand-100 rounded-xl transition-colors">
-            <PencilLine className="w-5 h-5" />
-          </button>
-          <button onClick={() => setConfirmDelete(true)} className="p-2 text-clay-500 hover:bg-clay-500/10 rounded-xl transition-colors">
-            <Trash2 className="w-5 h-5" />
-          </button>
-        </div>
+        {!hideActions && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => onEdit(recipe)} className="p-2 text-plum-500 hover:bg-sand-100 rounded-xl transition-colors">
+              <PencilLine className="w-5 h-5" />
+            </button>
+            <button onClick={() => setConfirmDelete(true)} className="p-2 text-clay-500 hover:bg-clay-500/10 rounded-xl transition-colors">
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Delete confirmation */}
