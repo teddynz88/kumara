@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import { hasTable, MIGRATION_HINT } from '../schema';
 import { getMonday, isoDate, todayIndexInWeek } from '../lib/dates';
 import { signOut } from '../lib/auth';
+import { getUnitsPref, setUnitsPref } from '../lib/units';
 import StarterPack from './StarterPack';
 import { input, label as labelClass } from '../ui';
 
@@ -19,7 +20,13 @@ const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export default function Profile({ session }) {
   const email = session?.user?.email || '';
+  const [units, setUnits] = useState(getUnitsPref());
   const [available, setAvailable] = useState(true);
+
+  function chooseUnits(system) {
+    setUnits(system);
+    setUnitsPref(system);
+  }
   const [rowId, setRowId] = useState(null);
   const [values, setValues] = useState({ calories: '', protein_g: '', carbs_g: '', fat_g: '', fibre_g: '' });
   const [saving, setSaving] = useState(false);
@@ -122,6 +129,27 @@ export default function Profile({ session }) {
         >
           <LogOut className="w-4 h-4" /> Sign out
         </button>
+      </div>
+
+      {/* Units */}
+      <div className="bg-sand-100 rounded-2xl p-4 mb-5 shadow-[0_1px_2px_rgba(45,42,36,.06)]">
+        <h3 className="eyebrow text-ink-600 mb-3">Recipe units</h3>
+        <div className="inline-flex rounded-xl bg-sand-50 p-1 border border-stone-200">
+          {[['metric', 'Metric (g, ml)'], ['imperial', 'Imperial (oz, cups)']].map(([val, lbl]) => (
+            <button
+              key={val}
+              onClick={() => chooseUnits(val)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                units === val ? 'bg-plum-500 text-sand-50' : 'text-ink-600 hover:text-ink-900'
+              }`}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-ink-600 mt-2">
+          Converts ingredient amounts when you read a recipe. Saved per device.
+        </p>
       </div>
 
       {/* Recipe packs */}

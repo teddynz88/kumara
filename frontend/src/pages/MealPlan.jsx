@@ -1,25 +1,29 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, X, Search, Star, Heart,
-  Sparkles, Wind, ShoppingBag, UtensilsCrossed, Trash2, Undo2,
+  Sparkles, Wind, ShoppingBag, UtensilsCrossed, Trash2, Undo2, Hourglass,
+  Egg, Sandwich, Cookie, Utensils,
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { MIGRATION_HINT } from '../schema';
 import { getMonday, addDays, isoDate, formatWeekLabel, todayIndexInWeek } from '../lib/dates';
 import {
   SLOTS, keyOf, loadWeek, saveSlot, clearSlot, clearWeek as clearWeekDb,
-  fetchTargets, generatePlan,
+  generatePlan,
 } from '../lib/planApi';
 import { input, btnGhost, MacroChip } from '../ui';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const SLOT_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
+// Column-header icons (the labels were truncating at this size).
+const SLOT_ICONS = { breakfast: Egg, lunch: Sandwich, snack: Cookie, dinner: Utensils };
 
-// Freedom / Takeaway / Restaurant — line icons, never emoji (brief §6.3).
+// Non-recipe slot types — line icons, never emoji (brief §6.3).
 const SPECIAL_TYPES = [
   { value: 'freedom', label: 'Freedom', icon: Wind },
   { value: 'takeaway', label: 'Takeaway', icon: ShoppingBag },
   { value: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed },
+  { value: 'fasting', label: 'Fasting', icon: Hourglass },
 ];
 const specialIcon = (type) => SPECIAL_TYPES.find(s => s.value === type)?.icon || Wind;
 
@@ -38,7 +42,6 @@ export default function MealPlan() {
   const [entries, setEntries] = useState({});
   const [persisted, setPersisted] = useState(true);
   const [recipes, setRecipes] = useState([]);
-  const [targets, setTargets] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [activeSlot, setActiveSlot] = useState(null);   // {day, slot} for the action sheet
@@ -63,7 +66,6 @@ export default function MealPlan() {
         .from('recipes')
         .select('id,title,tags,calories,protein_g,carbs_g,fat_g,fibre_g,rating,is_favourite,prep_time_mins,cook_time_mins,photo_url');
       setRecipes(data || []);
-      setTargets(await fetchTargets());
     })();
   }, []);
 
@@ -304,12 +306,17 @@ export default function MealPlan() {
         </div>
       )}
 
-      {/* Slot column headers */}
+      {/* Slot column headers — icons (the words were truncating at this width) */}
       <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr_1fr] gap-1.5 mb-1 px-0.5">
         <span />
-        {SLOTS.map(slot => (
-          <span key={slot} className="eyebrow-sm text-ink-600 text-center">{SLOT_LABELS[slot].slice(0, 5)}</span>
-        ))}
+        {SLOTS.map(slot => {
+          const Icon = SLOT_ICONS[slot];
+          return (
+            <span key={slot} className="flex justify-center text-ink-600" title={SLOT_LABELS[slot]}>
+              <Icon className="w-4 h-4" />
+            </span>
+          );
+        })}
       </div>
 
       {/* 7-day grid */}
@@ -376,13 +383,7 @@ export default function MealPlan() {
               {totals.count > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5 px-1 pb-0.5">
                   {MACRO_FIELDS.map(f => (
-                    <MacroChip
-                      key={f.key}
-                      label={f.label}
-                      value={totals[f.key]}
-                      target={targets?.[f.target]}
-                      unit={f.unit || ''}
-                    />
+                    <MacroChip key={f.key} label={f.label} value={totals[f.key]} unit={f.unit || ''} />
                   ))}
                 </div>
               )}
@@ -397,20 +398,9 @@ export default function MealPlan() {
           <p className="eyebrow text-ink-600 mb-2">This week · daily average</p>
           <div className="flex flex-wrap gap-1.5">
             {MACRO_FIELDS.map(f => (
-              <MacroChip
-                key={f.key}
-                label={f.label}
-                value={weekAverage[f.key]}
-                target={targets?.[f.target]}
-                unit={f.unit || ''}
-              />
+              <MacroChip key={f.key} label={f.label} value={weekAverage[f.key]} unit={f.unit || ''} />
             ))}
           </div>
-          {!targets && (
-            <p className="text-xs text-ink-600 mt-2">
-              Set daily targets in Profile to turn on the traffic lights.
-            </p>
-          )}
         </div>
       )}
 
@@ -446,7 +436,7 @@ export default function MealPlan() {
               <Plus className="w-4 h-4" /> Pick a recipe
             </button>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {SPECIAL_TYPES.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}

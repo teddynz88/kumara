@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowLeft, PencilLine, Trash2, Clock, Star, Heart, Users, Minus, Plus } from 'lucide-react';
+import { ArrowLeft, PencilLine, Trash2, Clock, Star, Heart, Users, Minus, Plus, Sparkles } from 'lucide-react';
 import { supabase } from '../supabase';
+import { getUnitsPref, convertIngredient } from '../lib/units';
 import { btnGhost, EstimatedChip } from '../ui';
 
 // Recipes carry either grouped ingredients (Phase 2) or a flat list (Phase 1);
@@ -28,6 +29,7 @@ export default function RecipeDetail({ recipe: initial, onBack, onDeleted, onEdi
   const [displayServings, setDisplayServings] = useState(recipe.servings || 1);
   const baseServings = initial.servings || 1;
   const scale = displayServings / baseServings;
+  const units = getUnitsPref();
 
   async function toggleFavourite() {
     const { error } = await supabase
@@ -99,7 +101,14 @@ export default function RecipeDetail({ recipe: initial, onBack, onDeleted, onEdi
 
         {/* Title + fav */}
         <div className="flex items-start justify-between gap-3">
-          <h2 className="type-h1 text-[32px] text-ink-900">{recipe.title}</h2>
+          <div className="min-w-0">
+            {recipe.pack_source && (
+              <span className="inline-flex items-center gap-1 eyebrow-sm text-plum-500 mb-1">
+                <Sparkles className="w-3 h-3" /> From {recipe.pack_source}
+              </span>
+            )}
+            <h2 className="type-h1 text-[32px] text-ink-900">{recipe.title}</h2>
+          </div>
           <button onClick={toggleFavourite} className="shrink-0 mt-1">
             <Heart className={`w-6 h-6 ${recipe.is_favourite ? 'fill-ember-500 text-ember-500' : 'text-ink-600'}`} />
           </button>
@@ -188,12 +197,14 @@ export default function RecipeDetail({ recipe: initial, onBack, onDeleted, onEdi
                   )}
                   <ul className="flex flex-col gap-1.5">
                     {group.ingredients.map((ing, i) => {
-                      const raw = parseFloat(ing.quantity);
-                      const scaled = !isNaN(raw) ? Math.round(raw * scale * 100) / 100 : ing.quantity;
+                      // Convert units to the user's preference, then scale by servings.
+                      const conv = convertIngredient(ing.quantity, ing.unit, units);
+                      const raw = parseFloat(conv.quantity);
+                      const scaled = !isNaN(raw) ? Math.round(raw * scale * 100) / 100 : conv.quantity;
                       return (
                         <li key={i} className="flex gap-2 text-sm text-ink-900/85">
                           <span className="font-narrow font-bold text-ink-900 min-w-[4rem] text-right shrink-0">
-                            {scaled} {ing.unit}
+                            {scaled} {conv.unit}
                           </span>
                           <span>
                             {ing.name}

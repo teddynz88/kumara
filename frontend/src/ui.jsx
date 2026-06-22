@@ -64,20 +64,24 @@ export function macroTone(value, target) {
   return 'neutral';
 }
 
-export function MacroChip({ label: macroLabel, value, target, unit = '' }) {
-  const tone = macroTone(value, target);
-  const toneClass =
-    tone === 'on'
-      ? 'bg-sage-500/12 text-sage-500'
-      : tone === 'over'
-        ? 'bg-clay-500/12 text-clay-500'
-        : 'bg-stone-200/70 text-ink-600';
+// Soft alternating purple/orange per macro — calmer than the old traffic-light
+// chips, and small enough to sit under a planner column.
+const MACRO_TONE = {
+  cal: 'bg-ember-500/12 text-ember-600',
+  prot: 'bg-plum-500/14 text-plum-700',
+  carb: 'bg-ember-500/12 text-ember-600',
+  fat: 'bg-plum-500/14 text-plum-700',
+  fib: 'bg-ember-500/12 text-ember-600',
+};
+
+export function MacroChip({ label: macroLabel, value, unit = '' }) {
+  const toneClass = MACRO_TONE[macroLabel] || 'bg-plum-500/12 text-plum-700';
   return (
-    <span className={`inline-flex items-baseline gap-1 rounded-full px-2.5 py-1 ${toneClass}`}>
-      <span className="font-narrow font-bold text-sm leading-none">
+    <span className={`inline-flex items-baseline gap-0.5 rounded-full px-1.5 py-0.5 ${toneClass}`}>
+      <span className="font-narrow font-bold text-[10px] leading-none">
         {value == null ? '—' : Math.round(value)}{unit}
       </span>
-      <span className="eyebrow-sm">{macroLabel}</span>
+      <span className="font-narrow text-[8px] uppercase tracking-wide opacity-75">{macroLabel}</span>
     </span>
   );
 }
