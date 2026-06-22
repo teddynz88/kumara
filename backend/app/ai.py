@@ -8,7 +8,7 @@ JSON wrangling or retry-on-parse-failure logic to maintain.
 import anthropic
 
 from . import config
-from .schemas import AIExtractedRecipe, GeneratedPlan
+from .schemas import AIExtractedRecipe, GeneratedPlan, MacroEstimate, MacrosPerServe
 
 EXTRACTION_SYSTEM = """You are a recipe extraction assistant. You will be given the readable text \
 of a webpage or PDF document. Extract the recipe it contains.
@@ -89,6 +89,39 @@ you just excluded.
 - Softer preferences: "easy week" means prefer shorter prep+cook times; "high protein" means \
 prefer higher protein per serve.
 - If daily macro targets are given, aim for daily totals near them across that day's slots."""
+
+
+MACRO_SYSTEM = """You estimate the nutrition of a recipe from its ingredients.
+
+You are given the full ingredient list (amounts are for the WHOLE recipe) and the
+number of servings. Estimate the macros PER SERVING: calories, protein (g),
+carbs (g), fat (g), fibre (g).
+
+- Base estimates on standard food composition values.
+- The ingredient amounts are for the whole recipe, so divide by the serving count.
+- Return single realistic numbers, not ranges.
+- Only set a field to null if you genuinely cannot estimate it."""
+
+
+def estimate_macros(ingredients_text: str, servings: int) -> MacrosPerServe:
+    """Estimate per-serving macros from an ingredient list (estimated=True)."""
+    response = _client().messages.parse(
+        model=config.AI_MODEL,
+        max_tokens=512,
+        system=MACRO_SYSTEM,
+        messages=[{
+            "role": "user",
+            "content": f"Servings: {servings}\n\nIngredients (whole recipe):\n{ingredients_text}",
+        }],
+        output_format=MacroEstimate,
+    )
+    e = response.parsed_output
+    if e is None:
+        return MacrosPerServe(estimated=True)
+    return MacrosPerServe(
+        calories=e.calories, protein=e.protein, carbs=e.carbs,
+        fat=e.fat, fibre=e.fibre, estimated=True,
+    )
 
 
 def generate_plan(

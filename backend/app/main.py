@@ -45,6 +45,30 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+def _ingredients_text(recipe: ExtractedRecipe) -> str:
+    lines = []
+    for group in recipe.ingredient_groups:
+        for ing in group.ingredients:
+            qty = "" if ing.quantity is None else str(ing.quantity)
+            lines.append(" ".join(p for p in (qty, ing.unit, ing.name) if p).strip())
+    return "\n".join(lines)
+
+
+def _estimate_macros_if_missing(recipe: ExtractedRecipe) -> None:
+    """If a recipe arrived with no macros (common on sites with no nutrition
+    data in their markup), estimate them per-serving from the ingredients.
+    Best-effort: if the AI call fails (e.g. no API credit) leave them blank."""
+    m = recipe.macros_per_serve
+    if any(getattr(m, k) is not None for k in ("calories", "protein", "carbs", "fat", "fibre")):
+        return  # source already provided macros — keep them
+    if not recipe.ingredient_groups:
+        return
+    try:
+        recipe.macros_per_serve = ai.estimate_macros(_ingredients_text(recipe), recipe.servings or 1)
+    except (anthropic.APIError, RuntimeError):
+        pass
+
+
 def _og_image(html: str | None, base_url: str) -> str | None:
     """Absolute og:image URL from the page, or None."""
     if not html:
@@ -113,6 +137,7 @@ async def import_url(body: UrlImportRequest, user: AuthedUser = Depends(require_
             if recipe.title and recipe.ingredient_groups:
                 if not recipe.photo_url:
                     recipe.photo_url = _og_image(html, url)
+                _estimate_macros_if_missing(recipe)
                 return recipe
 
     # 2. Fallback: Claude structures the readable page text.
@@ -129,7 +154,9 @@ async def import_url(body: UrlImportRequest, user: AuthedUser = Depends(require_
     except RuntimeError as exc:  # missing key
         raise HTTPException(500, str(exc))
 
-    return _ai_recipe_to_extracted(ai_recipe, url, _og_image(html, url))
+    recipe = _ai_recipe_to_extracted(ai_recipe, url, _og_image(html, url))
+    _estimate_macros_if_missing(recipe)
+    return recipe
 
 
 @app.post("/import/pdf", response_model=ExtractedRecipe)
@@ -154,7 +181,9 @@ async def import_pdf(file: UploadFile = File(...), user: AuthedUser = Depends(re
     except RuntimeError as exc:
         raise HTTPException(500, str(exc))
 
-    return _ai_recipe_to_extracted(ai_recipe, file.filename or "PDF upload")
+    recipe = _ai_recipe_to_extracted(ai_recipe, file.filename or "PDF upload")
+    _estimate_macros_if_missing(recipe)
+    return recipe
 
 
 @app.post("/plan/generate", response_model=PlanGenerateResponse)

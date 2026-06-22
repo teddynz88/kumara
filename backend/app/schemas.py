@@ -65,6 +65,15 @@ class AIExtractedRecipe(BaseModel):
     other_recipes_skipped: int = 0
 
 
+class MacroEstimate(BaseModel):
+    # Per-serving estimate produced by AI from the ingredient list.
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
+    fibre: Optional[float] = None
+
+
 class UrlImportRequest(BaseModel):
     url: str
 

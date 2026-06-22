@@ -56,17 +56,25 @@ def test_ai_endpoints_require_auth():
     assert exc.value.status_code == 401
 
 
-def test_import_url_structured_path_no_ai():
+def test_import_url_structured_path_no_ai_extraction():
+    # The structured (JSON-LD) path must not call the AI *extractor*. It may
+    # call the cheap macro *estimator* when the page has no nutrition data —
+    # stub that so the test stays offline.
+    est = MacrosPerServe(calories=300, protein=25, carbs=10, fat=8, fibre=2, estimated=True)
     with patch("app.main.fetch_page", new=AsyncMock(return_value=(JSONLD_PAGE, "text"))):
-        # No AI call should happen — patch it to blow up if touched.
-        with patch("app.main._run_ai_extraction", side_effect=AssertionError("AI called")):
-            response = client.post("/import/url", json={"url": "https://example.com/r"})
+        with patch("app.main._run_ai_extraction", side_effect=AssertionError("AI extractor called")):
+            with patch("app.main.ai.estimate_macros", return_value=est) as est_mock:
+                response = client.post("/import/url", json={"url": "https://example.com/r"})
     assert response.status_code == 200
     body = response.json()
     assert body["title"] == "Lemon Chicken"
     assert body["source_method"] == "structured"
     assert body["servings"] == 2
     assert body["ingredient_groups"][0]["ingredients"][0]["name"] == "chicken breasts"
+    # Page had no nutrition → estimator was invoked and its values flow through.
+    est_mock.assert_called_once()
+    assert body["macros_per_serve"]["calories"] == 300
+    assert body["macros_per_serve"]["estimated"] is True
 
 
 def test_import_url_rejects_instagram():
