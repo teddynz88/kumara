@@ -11,15 +11,20 @@ class LibraryUnavailable(Exception):
     pass
 
 
-def _headers() -> dict[str, str]:
+def _headers(token: Optional[str]) -> dict[str, str]:
+    # apikey stays the anon key (PostgREST needs it to accept the request);
+    # the bearer token is the logged-in USER's JWT, so row-level security
+    # scopes every read to that user's own rows. Falls back to the anon key
+    # when no user token is given (e.g. before the auth migration runs).
+    bearer = token or config.SUPABASE_ANON_KEY
     return {
         "apikey": config.SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {config.SUPABASE_ANON_KEY}",
+        "Authorization": f"Bearer {bearer}",
     }
 
 
-async def fetch_library() -> list[dict[str, Any]]:
-    """Compact recipe summaries for plan generation."""
+async def fetch_library(token: Optional[str] = None) -> list[dict[str, Any]]:
+    """Compact recipe summaries for plan generation (the caller's own library)."""
     if not config.SUPABASE_URL or not config.SUPABASE_ANON_KEY:
         raise LibraryUnavailable("Supabase is not configured on the backend (see backend/.env.example).")
     url = (
@@ -29,7 +34,7 @@ async def fetch_library() -> list[dict[str, Any]]:
     )
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=_headers(), timeout=10.0)
+            response = await client.get(url, headers=_headers(token), timeout=10.0)
         except httpx.HTTPError as exc:
             raise LibraryUnavailable(
                 "Couldn't reach the recipe database. Is the Supabase project awake?"
@@ -39,14 +44,14 @@ async def fetch_library() -> list[dict[str, Any]]:
     return response.json()
 
 
-async def fetch_targets() -> Optional[dict[str, Any]]:
-    """First row of nutrition_targets, or None when unset / table missing."""
+async def fetch_targets(token: Optional[str] = None) -> Optional[dict[str, Any]]:
+    """The caller's nutrition targets row, or None when unset / table missing."""
     if not config.SUPABASE_URL or not config.SUPABASE_ANON_KEY:
         return None
     url = f"{config.SUPABASE_URL}/rest/v1/nutrition_targets?select=*&limit=1"
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=_headers(), timeout=10.0)
+            response = await client.get(url, headers=_headers(token), timeout=10.0)
         except httpx.HTTPError:
             return None
     if response.status_code != 200:

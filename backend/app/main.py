@@ -6,10 +6,11 @@ The Vite dev server proxies /api/* here, so the frontend just calls /api/...
 
 import anthropic
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import ai, config, pdf_text
+from .auth import AuthedUser, require_user
 from .fetcher import PageUnreachable, fetch_page
 from .jsonld import find_recipe_jsonld, jsonld_to_recipe
 from .schemas import (
@@ -77,7 +78,7 @@ def _run_ai_extraction(text: str, source_hint: str) -> "ai.AIExtractedRecipe":
 
 
 @app.post("/import/url", response_model=ExtractedRecipe)
-async def import_url(body: UrlImportRequest) -> ExtractedRecipe:
+async def import_url(body: UrlImportRequest, user: AuthedUser = Depends(require_user)) -> ExtractedRecipe:
     url = body.url.strip()
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, "Please enter a full link starting with https://")
@@ -123,7 +124,7 @@ async def import_url(body: UrlImportRequest) -> ExtractedRecipe:
 
 
 @app.post("/import/pdf", response_model=ExtractedRecipe)
-async def import_pdf(file: UploadFile = File(...)) -> ExtractedRecipe:
+async def import_pdf(file: UploadFile = File(...), user: AuthedUser = Depends(require_user)) -> ExtractedRecipe:
     data = await file.read()
     if not data:
         raise HTTPException(400, "That file looks empty. Try choosing it again.")
@@ -148,18 +149,21 @@ async def import_pdf(file: UploadFile = File(...)) -> ExtractedRecipe:
 
 
 @app.post("/plan/generate", response_model=PlanGenerateResponse)
-async def plan_generate(body: PlanGenerateRequest) -> PlanGenerateResponse:
+async def plan_generate(
+    body: PlanGenerateRequest, user: AuthedUser = Depends(require_user)
+) -> PlanGenerateResponse:
     if not body.slots_to_fill:
         return PlanGenerateResponse(entries=[], dropped=0)
 
+    # Read THIS user's library (their JWT scopes the query via RLS).
     try:
-        library = await fetch_library()
+        library = await fetch_library(user.token)
     except LibraryUnavailable as exc:
         raise HTTPException(502, str(exc)) from exc
     if not library:
         raise HTTPException(400, "Your recipe library is empty — add some recipes first.")
 
-    targets = await fetch_targets()
+    targets = await fetch_targets(user.token)
     targets_text = "(not set)"
     if targets:
         targets_text = (

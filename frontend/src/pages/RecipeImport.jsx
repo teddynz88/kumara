@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link2, ArrowRight, CircleAlert, FileText, Upload } from 'lucide-react';
 import { input } from '../ui';
+import { authedFetch } from '../lib/auth';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -90,7 +91,7 @@ export default function RecipeImport({ mode = 'url', onExtracted }) {
       return;
     }
     runExtraction(
-      () => fetch(`${API_BASE}/import/url`, {
+      () => authedFetch(`${API_BASE}/import/url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmed }),
@@ -104,7 +105,7 @@ export default function RecipeImport({ mode = 'url', onExtracted }) {
     const form = new FormData();
     form.append('file', file);
     runExtraction(
-      () => fetch(`${API_BASE}/import/pdf`, { method: 'POST', body: form }),
+      () => authedFetch(`${API_BASE}/import/pdf`, { method: 'POST', body: form }),
       'pdf'
     );
   }

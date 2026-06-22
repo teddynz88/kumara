@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.auth import AuthedUser, require_user
 from app.schemas import (
     GeneratedPlan,
     Ingredient,
@@ -17,6 +18,10 @@ from app.schemas import (
     PlanEntry,
 )
 from app import ai
+
+# The AI endpoints require a signed-in user; stand in a fake one so these
+# tests exercise routing/validation without a live Supabase session.
+app.dependency_overrides[require_user] = lambda: AuthedUser("test-user", "test-token")
 
 client = TestClient(app)
 
@@ -31,6 +36,24 @@ JSONLD_PAGE = """
 
 def test_health():
     assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_ai_endpoints_require_auth():
+    # A bare client with NO dependency override should be rejected.
+    import pytest
+    from fastapi import HTTPException
+    from app.auth import require_user
+
+    async def call(auth_header):
+        return await require_user(authorization=auth_header)
+
+    import asyncio
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(call(None))
+    assert exc.value.status_code == 401
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(call("Basic xyz"))
+    assert exc.value.status_code == 401
 
 
 def test_import_url_structured_path_no_ai():

@@ -6,6 +6,7 @@
 
 import { supabase } from '../supabase';
 import { hasTable } from '../schema';
+import { authedFetch } from './auth';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -76,7 +77,7 @@ export async function fetchTargets() {
 }
 
 export async function generatePlan(weekStart, prompt, slotsToFill) {
-  const res = await fetch(`${API_BASE}/plan/generate`, {
+  const res = await authedFetch(`${API_BASE}/plan/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

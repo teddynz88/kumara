@@ -15,7 +15,7 @@ const tabs = [
   { name: 'Profile', icon: User, component: Profile },
 ];
 
-export default function App() {
+export default function App({ session }) {
   const [activeTab, setActiveTab] = useState(0);
   const ActivePage = tabs[activeTab].component;
 
@@ -31,7 +31,7 @@ export default function App() {
 
       {/* Page content */}
       <main className="flex-1 overflow-y-auto">
-        <ActivePage onNavigate={setActiveTab} />
+        <ActivePage onNavigate={setActiveTab} session={session} />
       </main>
 
       {/* Bottom navigation */}

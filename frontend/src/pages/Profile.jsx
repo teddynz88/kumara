@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
+import { LogOut } from 'lucide-react';
 import { supabase } from '../supabase';
 import { hasTable, MIGRATION_HINT } from '../schema';
 import { getMonday, isoDate, todayIndexInWeek } from '../lib/dates';
+import { signOut } from '../lib/auth';
+import StarterPack from './StarterPack';
 import { input, label as labelClass } from '../ui';
 
 const TARGET_FIELDS = [
@@ -14,7 +17,8 @@ const TARGET_FIELDS = [
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-export default function Profile() {
+export default function Profile({ session }) {
+  const email = session?.user?.email || '';
   const [available, setAvailable] = useState(true);
   const [rowId, setRowId] = useState(null);
   const [values, setValues] = useState({ calories: '', protein_g: '', carbs_g: '', fat_g: '', fibre_g: '' });
@@ -105,7 +109,28 @@ export default function Profile() {
   return (
     <div className="p-4 pb-8">
       <h2 className="type-h1 text-[28px] text-ink-900 mb-1">Profile</h2>
-      <p className="text-sm text-ink-600 mb-5">Daily targets drive the planner&rsquo;s traffic lights.</p>
+
+      {/* Account */}
+      <div className="bg-sand-100 rounded-2xl p-4 mb-5 shadow-[0_1px_2px_rgba(45,42,36,.06)] flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow-sm text-ink-600">Signed in as</p>
+          <p className="text-sm font-medium text-ink-900 truncate">{email || '—'}</p>
+        </div>
+        <button
+          onClick={() => signOut()}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-200 text-ink-900 text-sm font-semibold hover:bg-sand-50 transition-colors"
+        >
+          <LogOut className="w-4 h-4" /> Sign out
+        </button>
+      </div>
+
+      {/* Recipe packs */}
+      <div className="bg-sand-100 rounded-2xl p-4 mb-5 shadow-[0_1px_2px_rgba(45,42,36,.06)]">
+        <h3 className="eyebrow text-ink-600 mb-3">Recipe packs</h3>
+        <StarterPack compact />
+      </div>
+
+      <p className="text-sm text-ink-600 mb-3">Daily targets drive the planner&rsquo;s traffic lights.</p>
 
       {!available ? (
         <p className="text-xs text-ink-600 bg-sand-100 rounded-xl px-3 py-2">{MIGRATION_HINT}</p>
