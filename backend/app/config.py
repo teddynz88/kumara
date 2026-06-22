@@ -21,7 +21,10 @@ def _clean(name: str, default: str = "") -> str:
 
 
 ANTHROPIC_API_KEY = _clean("ANTHROPIC_API_KEY")
-AI_MODEL = _clean("KUMARA_AI_MODEL") or "claude-opus-4-8"
+# Haiku 4.5 is ~5x cheaper + faster than Opus and handles recipe extraction
+# and constrained meal planning well. Override with KUMARA_AI_MODEL (e.g. bump
+# to claude-sonnet-4-6) if planning constraints ever need more reasoning.
+AI_MODEL = _clean("KUMARA_AI_MODEL") or "claude-haiku-4-5"
 SUPABASE_URL = _clean("SUPABASE_URL").rstrip("/")
 SUPABASE_ANON_KEY = _clean("SUPABASE_ANON_KEY")
 FRONTEND_ORIGIN = _clean("FRONTEND_ORIGIN") or "http://localhost:5173"
