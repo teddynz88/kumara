@@ -15,9 +15,21 @@ live app to multi-user:
    `migrations/2026-06-11_users_and_accounts.sql` → Run. It claims your recipes
    (+ plans/lists/targets) to your account, turns them into "Teddy's Starting
    Recipe Pack", and locks row-level security on. Safe to run once.
-5. **Tell me it's done** → I create a throwaway second account and confirm it
-   sees ZERO of your recipes, can add your starter pack, and plans only from its
-   own library. Then it's safe to share.
+5. **Tell me it's done** → I confirm isolation. ✅ DONE 11 Jun: verified an
+   unauthenticated/non-owner caller sees 0 rows across recipes + planner +
+   targets + shopping (was leaking 52 recipes via a leftover Phase-1 "allow
+   everyone" policy on `recipes` — fixed by 2026-06-11_fix_recipes_rls.sql).
+   Security gate passed; safe to share.
+
+   STILL TO CONFIRM (needs a logged-in session, can't self-test without
+   creating an account, which is a no-go): (a) AI features work on the live
+   site with the BOM-fixed Claude key — hit Generate or import a URL while
+   logged in; (b) a fresh user can add the starter pack and gets their own
+   copies.
+
+TODO (Matt flagged): "work out what actually makes the starter pack" — right
+now it's a straight copy of all 26 of Matt's recipes. Curating it = choosing
+which recipes get pack_id = teddy-starter (vs all). Revisit after testing.
 
 **Google sign-in (optional, later):** currently hidden. Create a Google OAuth
 client (Google Cloud console), add the client ID + secret in Supabase → Auth →
