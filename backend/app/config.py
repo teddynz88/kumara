@@ -1,17 +1,30 @@
 """Environment configuration. All secrets come from backend/.env (gitignored)."""
 
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-ANTHROPIC_API_KEY = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
-AI_MODEL = os.getenv("KUMARA_AI_MODEL", "claude-opus-4-8")
-SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/")
-SUPABASE_ANON_KEY = (os.getenv("SUPABASE_ANON_KEY") or "").strip()
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+
+def _clean(name: str, default: str = "") -> str:
+    # Keys, tokens and URLs here are all printable ASCII. Strip anything else
+    # (notably a U+FEFF byte-order-mark, which env-var tooling can prepend and
+    # which Python's .strip() does NOT remove) so it can't poison an outgoing
+    # request header or invalidate the key. .strip() handles surrounding space.
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return re.sub(r"[^\x20-\x7E]", "", raw).strip()
+
+
+ANTHROPIC_API_KEY = _clean("ANTHROPIC_API_KEY")
+AI_MODEL = _clean("KUMARA_AI_MODEL") or "claude-opus-4-8"
+SUPABASE_URL = _clean("SUPABASE_URL").rstrip("/")
+SUPABASE_ANON_KEY = _clean("SUPABASE_ANON_KEY")
+FRONTEND_ORIGIN = _clean("FRONTEND_ORIGIN") or "http://localhost:5173"
 
 
 def require_ai_key() -> str:
