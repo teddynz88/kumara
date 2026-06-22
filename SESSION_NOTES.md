@@ -1,3 +1,35 @@
+# Users / accounts rollout — your action list (do these in order)
+
+The accounts build is **deployed and the sign-up bug is fixed** (a byte-order-mark
+in the Vercel-provided keys was poisoning request headers — now stripped in code,
+both frontend `supabase.js` and backend `config.py`). To finish switching the
+live app to multi-user:
+
+1. **Resume Supabase if paused** (free tier auto-pauses after ~7 days idle).
+2. **(Recommended) Frictionless signup:** Supabase → Authentication → turn OFF
+   "Confirm email", so signup is instant for you and friends.
+3. **Sign up — be the FIRST account** at https://kumara-app.vercel.app, *before*
+   sharing the link. The migration claims all existing data to the first account,
+   which must be you.
+4. **Run the users migration:** Supabase → SQL editor → paste all of
+   `migrations/2026-06-11_users_and_accounts.sql` → Run. It claims your recipes
+   (+ plans/lists/targets) to your account, turns them into "Teddy's Starting
+   Recipe Pack", and locks row-level security on. Safe to run once.
+5. **Tell me it's done** → I create a throwaway second account and confirm it
+   sees ZERO of your recipes, can add your starter pack, and plans only from its
+   own library. Then it's safe to share.
+
+**Google sign-in (optional, later):** currently hidden. Create a Google OAuth
+client (Google Cloud console), add the client ID + secret in Supabase → Auth →
+Providers → Google, add `https://kumara-app.vercel.app` as a redirect URL, then
+set Vercel env `VITE_GOOGLE_AUTH=1` and redeploy. Email+password needs none of this.
+
+**Keeping Supabase awake:** free tier pauses after ~7 days idle — fine for you,
+but a friend hitting a paused app sees errors. Resume when needed, or upgrade to
+Supabase Pro for always-on once testing ramps up.
+
+---
+
 # Session notes — overnight MVP build, 10–11 June 2026
 
 Built by Claude (Fable) from `Kūmara — Overnight MVP Build Brief v1.1`.
