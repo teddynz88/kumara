@@ -7,6 +7,7 @@ ISO-8601 durations, and free-text ingredient strings ("500 g beef mince").
 import json
 import re
 from typing import Any, Optional
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
@@ -277,6 +278,13 @@ def jsonld_to_recipe(node: dict, source_url: str) -> ExtractedRecipe:
         estimated=False if has_macros else True,
     )
 
+    # Image URLs in JSON-LD are often relative ("/wp-content/...") or
+    # protocol-relative ("//cdn/..."); resolve against the page URL so the
+    # browser can actually load them.
+    photo = _parse_photo(node.get("image"))
+    if photo:
+        photo = urljoin(source_url, photo)
+
     prep = iso_duration_to_minutes(node.get("prepTime"))
     cook = iso_duration_to_minutes(node.get("cookTime"))
     if cook is None and prep is not None:
@@ -296,5 +304,5 @@ def jsonld_to_recipe(node: dict, source_url: str) -> ExtractedRecipe:
         steps=_parse_steps(node.get("recipeInstructions")),
         macros_per_serve=macros,
         tags=_parse_tags(node),
-        photo_url=_parse_photo(node.get("image")),
+        photo_url=photo,
     )

@@ -4,6 +4,8 @@ Run locally:  uvicorn app.main:app --reload --port 8000  (from backend/)
 The Vite dev server proxies /api/* here, so the frontend just calls /api/...
 """
 
+from urllib.parse import urljoin
+
 import anthropic
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -41,6 +43,15 @@ app.add_middleware(
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+def _og_image(html: str | None, base_url: str) -> str | None:
+    """Absolute og:image URL from the page, or None."""
+    if not html:
+        return None
+    og = BeautifulSoup(html, "html.parser").find("meta", property="og:image")
+    src = og.get("content") if og else None
+    return urljoin(base_url, src) if src else None
 
 
 def _ai_recipe_to_extracted(
@@ -100,6 +111,8 @@ async def import_url(body: UrlImportRequest, user: AuthedUser = Depends(require_
         if node:
             recipe = jsonld_to_recipe(node, url)
             if recipe.title and recipe.ingredient_groups:
+                if not recipe.photo_url:
+                    recipe.photo_url = _og_image(html, url)
                 return recipe
 
     # 2. Fallback: Claude structures the readable page text.
@@ -116,11 +129,7 @@ async def import_url(body: UrlImportRequest, user: AuthedUser = Depends(require_
     except RuntimeError as exc:  # missing key
         raise HTTPException(500, str(exc))
 
-    photo = None
-    if html:
-        og = BeautifulSoup(html, "html.parser").find("meta", property="og:image")
-        photo = og.get("content") if og else None
-    return _ai_recipe_to_extracted(ai_recipe, url, photo)
+    return _ai_recipe_to_extracted(ai_recipe, url, _og_image(html, url))
 
 
 @app.post("/import/pdf", response_model=ExtractedRecipe)

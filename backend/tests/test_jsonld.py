@@ -161,6 +161,24 @@ def test_howto_sections_flatten():
     assert recipe.steps == ["Simmer the sauce.", "Serve."]
 
 
+def test_relative_image_resolved_to_absolute():
+    node = dict(RECIPE_NODE, image="/wp-content/uploads/2022/06/dish.jpg")
+    recipe = jsonld_to_recipe(node, "https://example.com/recipes/dish/")
+    assert recipe.photo_url == "https://example.com/wp-content/uploads/2022/06/dish.jpg"
+
+
+def test_protocol_relative_image_resolved():
+    node = dict(RECIPE_NODE, image="//cdn.example.com/img/dish.jpg")
+    recipe = jsonld_to_recipe(node, "https://example.com/recipes/dish/")
+    assert recipe.photo_url == "https://cdn.example.com/img/dish.jpg"
+
+
+def test_absolute_image_unchanged():
+    node = dict(RECIPE_NODE, image="https://example.com/abs.jpg")
+    recipe = jsonld_to_recipe(node, "https://example.com/recipes/dish/")
+    assert recipe.photo_url == "https://example.com/abs.jpg"
+
+
 def test_missing_nutrition_marks_estimated():
     node = {k: v for k, v in RECIPE_NODE.items() if k != "nutrition"}
     recipe = jsonld_to_recipe(node, "https://example.com")
