@@ -5,7 +5,7 @@ import RecipeForm from './RecipeForm';
 import RecipeCard from './RecipeCard';
 import RecipeDetail from './RecipeDetail';
 import RecipeImport from './RecipeImport';
-import StarterPack from './StarterPack';
+import RecipePacks from './RecipePacks';
 import { chip, btnGhost, input } from '../ui';
 
 const SORT_OPTIONS = [
@@ -216,8 +216,8 @@ export default function Recipes() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-6 gap-3 text-center min-h-full">
         <h2 className="type-h2 text-ink-900">Your library is empty</h2>
-        <p className="text-sm text-ink-600">Add some recipes to get cooking — or start with Teddy’s pack.</p>
-        <div className="mt-3"><StarterPack onAdded={fetchRecipes} /></div>
+        <p className="text-sm text-ink-600">Add some recipes to get cooking — or start with a recipe pack.</p>
+        <div className="mt-3"><RecipePacks onAdded={fetchRecipes} /></div>
         <button onClick={() => setView('add')} className="text-plum-500 hover:text-plum-700 font-medium text-sm mt-1 inline-flex items-center gap-1">
           <Plus className="w-4 h-4" /> Or add your own recipe
         </button>

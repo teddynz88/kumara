@@ -57,3 +57,16 @@ export async function packRecipeCount(slug = 'teddy-starter') {
   if (error) return null;
   return data ?? null;
 }
+
+// List the public recipe packs on offer (e.g. Teddy's starter pack, the
+// Health with Bec plans). Returns [] if the packs table doesn't exist yet
+// (i.e. before the users/accounts migration has been run).
+export async function listPacks() {
+  const { data, error } = await supabase
+    .from('recipe_packs')
+    .select('slug, name, creator_name, description')
+    .eq('is_public', true)
+    .order('created_at', { ascending: true });
+  if (error) return [];
+  return data ?? [];
+}

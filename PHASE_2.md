@@ -14,7 +14,11 @@ Status legend: 🔵 idea · 🟡 designed · 🟢 in progress · ✅ done
 
 - **Done so far:** "Teddy's Starting Recipe Pack" exists; new users can one-tap
   add it on the empty library / in Profile; copied recipes show a "From Teddy's
-  Starting Recipe Pack" badge. Packs are seeded via SQL migration.
+  Starting Recipe Pack" badge. Packs are seeded via SQL migration. The pack
+  picker now lists *all* public packs (not just Teddy's) — second pack added:
+  **Health with Bec — Meal Plan 76 (June 2026)**, 14 recipes with the real
+  plan photos (`migrations/2026-06-24_hwb76_pack.sql`,
+  `frontend/public/packs/hwb-76/`).
 - **Next:** let users share individual recipes and whole packs with each other
   (peer sharing), then the paid creator marketplace — creators publish
   collections / weekly meal plans, subscribers one-tap them into their own
@@ -22,6 +26,24 @@ Status legend: 🔵 idea · 🟡 designed · 🟢 in progress · ✅ done
 - **Open question:** what actually goes *in* the starter pack? Right now it's a
   straight copy of all of Matt's recipes. Curating = choosing which recipes
   carry `pack_id` (a subset), rather than all.
+
+## Steerable week generation — packs + style prompt  🔵
+*Make "Generate" on the planner feel like briefing a coach, not rolling dice.*
+
+- Today the planner's Generate just takes a freeform prompt and fills empty
+  slots. Idea: add a small **dropdown / "give it more substance" expander** next
+  to Generate that lets you compose the week from richer inputs before it runs:
+  - **Seed from a pack** — pick one or more packs (e.g. *Health with Bec — Meal
+    Plan 76*) so generation draws from / is styled after that collection.
+  - **Style prompt** — a freeform line layered on top, e.g.
+    *"use the June Health with Bec plan, plus a Friday restaurant night and
+    fasting Tuesday & Wednesday mornings."*
+  - Generation then respects existing manual marks + the fasting/restaurant/
+    freedom slots already in the data model (`entry_type` supports `fasting`,
+    `restaurant`, `freedom`, `takeaway`).
+- Why it matters: turns packs from a static "add 14 recipes" into a *living
+  input* to the weekly plan — the bridge between the packs pillar and the
+  planner. Natural precursor to creators publishing whole weekly plans.
 
 ## Admin / creator section  🔵
 *Turn pack curation into a UI instead of a migration.*
