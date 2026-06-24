@@ -5,7 +5,7 @@ import { hasTable, MIGRATION_HINT } from '../schema';
 import { getMonday, isoDate, todayIndexInWeek } from '../lib/dates';
 import { signOut } from '../lib/auth';
 import { getUnitsPref, setUnitsPref } from '../lib/units';
-import StarterPack from './StarterPack';
+import RecipePacks from './RecipePacks';
 import { input, label as labelClass } from '../ui';
 
 const TARGET_FIELDS = [
@@ -155,7 +155,7 @@ export default function Profile({ session }) {
       {/* Recipe packs */}
       <div className="bg-sand-100 rounded-2xl p-4 mb-5 shadow-[0_1px_2px_rgba(45,42,36,.06)]">
         <h3 className="eyebrow text-ink-600 mb-3">Recipe packs</h3>
-        <StarterPack compact />
+        <RecipePacks compact />
       </div>
 
       <p className="text-sm text-ink-600 mb-3">Daily targets drive the planner&rsquo;s traffic lights.</p>
