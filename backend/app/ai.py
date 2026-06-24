@@ -69,10 +69,19 @@ ingredient names)
 breakfast/lunch/snack/dinner)
 - optionally the user's daily macro targets and a free-text request.
 
-Fill EVERY listed slot with a recipe from the library.
+Fill EVERY listed slot. By default a slot is filled with a recipe from the \
+library (entry_type "recipe", with that recipe's id). A slot may instead be a \
+non-recipe marker when the user's request asks for one on that day/slot: \
+entry_type "fasting", "restaurant", "takeaway", or "freedom", with recipe_id \
+left null.
 
 Hard rules:
-- Use ONLY recipe ids from the provided library. Never invent recipes or ids.
+- For "recipe" entries, use ONLY recipe ids from the provided library. Never \
+invent recipes or ids. Non-recipe entries ("fasting"/"restaurant"/"takeaway"/\
+"freedom") have no recipe_id.
+- Only use a non-recipe marker when the user's request clearly calls for it on \
+that day/slot (e.g. "fasting Tuesday and Wednesday breakfast", "restaurant \
+Friday dinner", "Saturday lunch is a freedom meal"). Otherwise fill with a recipe.
 - One entry per listed slot; do not add entries for slots that were not listed.
 - Match meal-type tags to slots where possible (a recipe tagged "breakfast" goes in breakfast \
 slots, "dinner" in dinner, etc.). A snack slot suits recipes tagged snack or baking.
@@ -88,6 +97,9 @@ user's request rules out (empty if no exclusions). Only then assign slots, never
 you just excluded.
 - Softer preferences: "easy week" means prefer shorter prep+cook times; "high protein" means \
 prefer higher protein per serve.
+- If the user asks to build the week around / from particular packs, strongly prefer recipes \
+whose "pack:" label matches one of those packs, while still respecting meal-type, variety and \
+any dietary exclusions. Fall back to other library recipes only when a pack can't cover a slot.
 - If daily macro targets are given, aim for daily totals near them across that day's slots."""
 
 
@@ -129,11 +141,14 @@ def generate_plan(
     slots_text: str,
     targets_text: str,
     user_prompt: str | None,
+    packs: list[str] | None = None,
 ) -> GeneratedPlan:
+    packs_text = ", ".join(packs) if packs else "(none)"
     user_content = (
         f"Recipe library:\n{library_summary}\n\n"
         f"Slots to fill:\n{slots_text}\n\n"
         f"Daily macro targets: {targets_text}\n\n"
+        f"Build the week around these packs: {packs_text}\n\n"
         f"User request: {user_prompt.strip() if user_prompt else '(none)'}"
     )
     response = _client().messages.parse(

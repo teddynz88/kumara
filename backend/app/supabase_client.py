@@ -30,7 +30,7 @@ async def fetch_library(token: Optional[str] = None) -> list[dict[str, Any]]:
     url = (
         f"{config.SUPABASE_URL}/rest/v1/recipes"
         "?select=id,title,tags,calories,protein_g,carbs_g,fat_g,fibre_g,"
-        "rating,is_favourite,prep_time_mins,cook_time_mins,ingredients"
+        "rating,is_favourite,prep_time_mins,cook_time_mins,ingredients,pack_source"
     )
     async with httpx.AsyncClient() as client:
         try:
@@ -69,11 +69,12 @@ def summarise_library(rows: list[dict[str, Any]]) -> str:
             (i.get("name") or "") for i in (r.get("ingredients") or [])
         )[:300]
         time_total = (r.get("prep_time_mins") or 0) + (r.get("cook_time_mins") or 0)
+        pack = f" | pack: {r['pack_source']}" if r.get("pack_source") else ""
         lines.append(
             f"- id={r['id']} | {r['title']} | tags: {', '.join(r.get('tags') or [])} | "
             f"per serve: {r.get('calories')} cal, {r.get('protein_g')}g protein, "
             f"{r.get('carbs_g')}g carbs, {r.get('fat_g')}g fat, {r.get('fibre_g')}g fibre | "
             f"time: {time_total or '?'} min | rating: {r.get('rating') or '-'}/5 | "
-            f"favourite: {bool(r.get('is_favourite'))} | ingredients: {ingredients}"
+            f"favourite: {bool(r.get('is_favourite'))}{pack} | ingredients: {ingredients}"
         )
     return "\n".join(lines)

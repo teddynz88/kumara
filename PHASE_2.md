@@ -27,31 +27,47 @@ Status legend: 🔵 idea · 🟡 designed · 🟢 in progress · ✅ done
   straight copy of all of Matt's recipes. Curating = choosing which recipes
   carry `pack_id` (a subset), rather than all.
 
-## Steerable week generation — packs + style prompt  🔵
+## Steerable week generation — packs + style prompt  🟢
 *Make "Generate" on the planner feel like briefing a coach, not rolling dice.*
 
-- Today the planner's Generate just takes a freeform prompt and fills empty
-  slots. Idea: add a small **dropdown / "give it more substance" expander** next
-  to Generate that lets you compose the week from richer inputs before it runs:
-  - **Seed from a pack** — pick one or more packs (e.g. *Health with Bec — Meal
-    Plan 76*) so generation draws from / is styled after that collection.
-  - **Style prompt** — a freeform line layered on top, e.g.
-    *"use the June Health with Bec plan, plus a Friday restaurant night and
-    fasting Tuesday & Wednesday mornings."*
-  - Generation then respects existing manual marks + the fasting/restaurant/
-    freedom slots already in the data model (`entry_type` supports `fasting`,
-    `restaurant`, `freedom`, `takeaway`).
-- Why it matters: turns packs from a static "add 14 recipes" into a *living
-  input* to the weekly plan — the bridge between the packs pillar and the
-  planner. Natural precursor to creators publishing whole weekly plans.
+- **Shipped:** a **"Build around a pack"** expander under the Generate prompt.
+  Pick one or more packs (chips) → on Generate they're pulled into the library
+  (idempotent) and the AI builds the week around them. The freeform prompt
+  layers on top and can place special days — the generator now returns non-recipe
+  markers (`fasting`/`restaurant`/`takeaway`/`freedom`), so prompts like *"add
+  the most recent Health with Bec pack, except Friday — I'm going out"* or
+  *"fasting Tuesday & Wednesday breakfast"* work. Backend: `packs` on the
+  request, `pack_source` in the library summary, `entry_type` on plan entries.
+- **Refinements next:**
+  - Surface the pack picker more prominently (it's behind an expander today);
+    a one-tap "build from this pack" straight off a pack card / the planner.
+  - Remember the last-used packs + style as a reusable "week template".
+  - Let a pack ship its *own* suggested week layout (a creator's plan, not just
+    a bag of recipes) that generation can lay down as a starting point.
 
-## Admin / creator section  🔵
-*Turn pack curation into a UI instead of a migration.*
+## Packs → creator marketplace (staged)  🔵
+*The core monetisation pillar. Build each stage so it doesn't box in the next.*
 
-- A small admin area for Matt (and later creators) to: name a pack, set its
-  cover + source/creator attribution, choose which recipes go in it, and
-  publish / unpublish.
-- Natural follow-on from the starter-pack MVP; the on-ramp to the marketplace.
+- **v1 — add (done):** public packs seeded by migration; anyone can one-tap add
+  a pack into their library; packs steer week generation (above).
+- **v2 — build & share:** a creator/admin UI to assemble a pack from your own
+  recipes (name, cover, attribution, pick recipes, publish/unpublish) — replaces
+  hand-written SQL migrations. Then **share**: a pack gets a shareable **code /
+  link** a creator can drop on their socials; opening it adds the pack. Peer
+  sharing of single recipes too.
+- **v3 — sell:** creators sell packs (one-off or subscription) to their audience;
+  Stripe checkout + creator payouts via Stripe Connect; private/paid packs
+  alongside public ones.
+- **Infra to keep consistent NOW (so v2/v3 aren't a rewrite):**
+  - Packs already are first-class rows (`recipe_packs`) with `slug`, creator,
+    `is_public` — keep `slug` the stable public handle a share code maps to.
+  - Templates live as `pack_id`-stamped recipes copied on add; keep "add" as a
+    server-side `SECURITY DEFINER` copy (`add_starter_pack`) so paid/private
+    gating can sit in that one function later.
+  - Stamp provenance (`pack_source`) on copies — already done; the basis for
+    "from <creator>" attribution and, later, usage/royalty signals.
+  - Avoid baking "Teddy's starter" assumptions into UI — the picker already
+    lists *all* public packs generically, which is the v2/v3 surface too.
 
 ## Bigger-vision items (from the scope doc, not yet scheduled)
 - Cookbook photo / OCR import, Instagram/TikTok import, voice capture.

@@ -76,7 +76,7 @@ export async function fetchTargets() {
   return data[0];
 }
 
-export async function generatePlan(weekStart, prompt, slotsToFill) {
+export async function generatePlan(weekStart, prompt, slotsToFill, packs) {
   const res = await authedFetch(`${API_BASE}/plan/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -84,6 +84,7 @@ export async function generatePlan(weekStart, prompt, slotsToFill) {
       week_start: weekStart,
       prompt: prompt || null,
       slots_to_fill: slotsToFill,
+      packs: packs?.length ? packs : null,
     }),
   });
   let data;

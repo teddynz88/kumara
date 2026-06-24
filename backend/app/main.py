@@ -217,7 +217,7 @@ async def plan_generate(
 
     try:
         plan = ai.generate_plan(
-            summarise_library(library), slots_text, targets_text, body.prompt
+            summarise_library(library), slots_text, targets_text, body.prompt, body.packs
         )
     except anthropic.AuthenticationError:
         raise HTTPException(500, "The Claude API key on the backend is missing or invalid.")
@@ -226,7 +226,9 @@ async def plan_generate(
     except RuntimeError as exc:
         raise HTTPException(500, str(exc))
 
-    # Validate: only real recipe ids, only requested slots, one entry per slot.
+    # Validate: requested slots only, one entry per slot. "recipe" entries must
+    # reference a real library id; special markers (fasting/restaurant/…) carry
+    # no recipe_id and are accepted as-is.
     valid_ids = {str(r["id"]) for r in library}
     requested = {(s.day, s.slot) for s in body.slots_to_fill}
     seen: set[tuple[int, str]] = set()
@@ -234,10 +236,15 @@ async def plan_generate(
     dropped = 0
     for entry in plan.entries:
         key = (entry.day, entry.slot)
-        if entry.recipe_id in valid_ids and key in requested and key not in seen:
-            seen.add(key)
-            entries.append(entry)
-        else:
+        if key not in requested or key in seen:
             dropped += 1
+            continue
+        if entry.entry_type == "recipe" and entry.recipe_id not in valid_ids:
+            dropped += 1
+            continue
+        if entry.entry_type != "recipe":
+            entry.recipe_id = None  # markers never carry an id
+        seen.add(key)
+        entries.append(entry)
 
     return PlanGenerateResponse(entries=entries, dropped=dropped)

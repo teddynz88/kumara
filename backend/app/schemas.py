@@ -90,12 +90,19 @@ class PlanGenerateRequest(BaseModel):
     prompt: Optional[str] = None
     # Slots the frontend wants filled (i.e. currently empty ones).
     slots_to_fill: list[SlotRef]
+    # Names of recipe packs to build the week around / style after (the
+    # frontend ensures these packs are in the user's library first).
+    packs: Optional[list[str]] = None
 
 
 class PlanEntry(BaseModel):
     day: int = Field(ge=0, le=6)
     slot: Literal["breakfast", "lunch", "snack", "dinner"]
-    recipe_id: str
+    # "recipe" entries reference a library recipe_id; the special types are
+    # non-recipe markers (a fasting morning, a Friday restaurant night, …) and
+    # carry no recipe_id.
+    entry_type: Literal["recipe", "freedom", "takeaway", "restaurant", "fasting"] = "recipe"
+    recipe_id: Optional[str] = None
 
 
 class GeneratedPlan(BaseModel):
