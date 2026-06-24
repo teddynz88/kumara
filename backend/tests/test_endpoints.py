@@ -136,8 +136,40 @@ def test_plan_generate_validates_ids_and_slots():
                 })
     assert response.status_code == 200
     body = response.json()
-    assert body["entries"] == [{"day": 0, "slot": "dinner", "recipe_id": "aaa"}]
+    assert body["entries"] == [
+        {"day": 0, "slot": "dinner", "entry_type": "recipe", "recipe_id": "aaa"}
+    ]
     assert body["dropped"] == 3
+
+
+def test_plan_generate_accepts_special_day_markers():
+    # A non-recipe marker (e.g. a Friday restaurant night) carries no recipe_id
+    # and should pass validation as-is, alongside a normal recipe entry.
+    fake_plan = GeneratedPlan(entries=[
+        PlanEntry(day=0, slot="dinner", recipe_id="aaa"),
+        PlanEntry(day=4, slot="dinner", entry_type="restaurant"),
+    ])
+    with patch("app.main.fetch_library", new=AsyncMock(return_value=_fake_library())):
+        with patch("app.main.fetch_targets", new=AsyncMock(return_value=None)):
+            with patch("app.main.ai.generate_plan", return_value=fake_plan) as gen:
+                response = client.post("/plan/generate", json={
+                    "week_start": "2026-06-08",
+                    "prompt": "restaurant friday dinner",
+                    "packs": ["Health with Bec - Meal Plan 76 (June 2026)"],
+                    "slots_to_fill": [
+                        {"day": 0, "slot": "dinner"},
+                        {"day": 4, "slot": "dinner"},
+                    ],
+                })
+    assert response.status_code == 200
+    body = response.json()
+    assert body["entries"] == [
+        {"day": 0, "slot": "dinner", "entry_type": "recipe", "recipe_id": "aaa"},
+        {"day": 4, "slot": "dinner", "entry_type": "restaurant", "recipe_id": None},
+    ]
+    assert body["dropped"] == 0
+    # The selected packs are forwarded to the generator.
+    assert gen.call_args.args[4] == ["Health with Bec - Meal Plan 76 (June 2026)"]
 
 
 def test_plan_generate_empty_slots_short_circuits():

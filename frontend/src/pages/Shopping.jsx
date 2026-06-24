@@ -21,6 +21,7 @@ export default function Shopping() {
   const [error, setError] = useState(null);
 
   const [adding, setAdding] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [newName, setNewName] = useState('');
   const [newQty, setNewQty] = useState('');
   const [newUnit, setNewUnit] = useState('');
@@ -156,6 +157,15 @@ export default function Shopping() {
     }
   }
 
+  // Empty the whole list for this week in one go (manual + plan items).
+  async function clearAll() {
+    setConfirmClear(false);
+    setItems([]);
+    if (persisted) {
+      await supabase.from('shopping_list_items').delete().eq('week_start', weekStart);
+    }
+  }
+
   async function addManual(e) {
     e.preventDefault();
     const name = newName.trim();
@@ -233,7 +243,25 @@ export default function Shopping() {
         >
           <Plus className="w-4 h-4" /> Add
         </button>
+        {items.length > 0 && (
+          <button
+            onClick={() => setConfirmClear(true)}
+            className="px-3 rounded-xl border border-clay-500/40 text-clay-500 text-sm font-semibold hover:bg-clay-500/10 inline-flex items-center gap-1.5"
+          >
+            <Trash2 className="w-4 h-4" /> Clear
+          </button>
+        )}
       </div>
+
+      {confirmClear && (
+        <div className="mb-4 p-3 bg-clay-500/10 rounded-xl flex items-center justify-between">
+          <span className="text-sm text-clay-500 font-medium">Clear the whole shopping list?</span>
+          <div className="flex gap-2">
+            <button onClick={() => setConfirmClear(false)} className="px-3 py-1 text-sm text-ink-600">Cancel</button>
+            <button onClick={clearAll} className="px-3 py-1 text-sm border border-clay-500/40 text-clay-500 rounded-xl font-semibold">Clear all</button>
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-xs text-clay-500 mb-3">{error}</p>}
 

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  ChevronLeft, ChevronRight, Plus, X, Search, Star, Heart, BookOpen,
+  ChevronLeft, ChevronRight, ChevronDown, Plus, X, Search, Star, Heart, BookOpen,
   Sparkles, Wind, ShoppingBag, UtensilsCrossed, Trash2, Undo2, Hourglass,
-  EggFried, Sandwich, Cookie, Utensils, CircleAlert,
+  EggFried, Sandwich, Cookie, Utensils, CircleAlert, Layers,
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { listPacks, addStarterPack } from '../lib/auth';
 import { getMonday, addDays, isoDate, formatWeekLabel, todayIndexInWeek } from '../lib/dates';
 import {
   SLOTS, keyOf, loadWeek, saveSlot, clearSlot, clearWeek as clearWeekDb,
@@ -75,6 +76,9 @@ export default function MealPlan() {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState(null);
+  const [showOptions, setShowOptions] = useState(false);  // "more substance" expander
+  const [packs, setPacks] = useState([]);                 // public packs on offer
+  const [selectedPacks, setSelectedPacks] = useState([]); // slugs chosen to build around
   const [undoSnapshot, setUndoSnapshot] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -84,14 +88,18 @@ export default function MealPlan() {
   );
 
   // --- Loading ---
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('recipes')
-        .select('id,title,tags,calories,protein_g,carbs_g,fat_g,fibre_g,rating,is_favourite,prep_time_mins,cook_time_mins,photo_url');
-      setRecipes(data || []);
-    })();
+  const loadRecipes = useCallback(async () => {
+    const { data } = await supabase
+      .from('recipes')
+      .select('id,title,tags,calories,protein_g,carbs_g,fat_g,fibre_g,rating,is_favourite,prep_time_mins,cook_time_mins,photo_url');
+    setRecipes(data || []);
   }, []);
+
+  useEffect(() => { loadRecipes(); }, [loadRecipes]);
+
+  // Public packs the user can build the week around (empty until the
+  // users/accounts migration has run).
+  useEffect(() => { listPacks().then(setPacks); }, []);
 
   const reloadWeek = useCallback(async () => {
     setLoading(true);
@@ -175,7 +183,15 @@ export default function MealPlan() {
     setGenerating(true);
     const snapshot = entries;
     try {
-      const result = await generatePlan(weekStart, prompt, slotsToFill);
+      // Pull any chosen packs into the library first (idempotent), so the
+      // generator can actually pick their recipes; then steer by pack name.
+      const chosen = packs.filter(p => selectedPacks.includes(p.slug));
+      if (chosen.length) {
+        await Promise.all(chosen.map(p => addStarterPack(p.slug).catch(() => 0)));
+        await loadRecipes();
+      }
+      const packNames = chosen.map(p => p.name);
+      const result = await generatePlan(weekStart, prompt, slotsToFill, packNames);
       if (!result.entries?.length) {
         setGenError('No plan came back — try adding more recipes to your library first.');
         return;
@@ -184,12 +200,12 @@ export default function MealPlan() {
       setEntries(prev => {
         const next = { ...prev };
         for (const e of result.entries) {
-          next[keyOf(e.day, e.slot)] = { entry_type: 'recipe', recipe_id: e.recipe_id };
+          next[keyOf(e.day, e.slot)] = { entry_type: e.entry_type || 'recipe', recipe_id: e.recipe_id };
         }
         return next;
       });
       for (const e of result.entries) {
-        saveSlot(weekStart, e.day, e.slot, 'recipe', e.recipe_id);
+        saveSlot(weekStart, e.day, e.slot, e.entry_type || 'recipe', e.recipe_id);
       }
     } catch (err) {
       setGenError(err.message);
@@ -307,10 +323,55 @@ export default function MealPlan() {
           type="text"
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
-          placeholder='e.g. "easy week, high protein, no fish"'
+          placeholder='e.g. "easy week, high protein, restaurant Friday dinner"'
           className={`${input} bg-sand-50 mb-2`}
           disabled={generating}
         />
+
+        {/* "Give it more substance" — build the week around recipe packs */}
+        {packs.length > 0 && (
+          <div className="mb-2">
+            <button
+              type="button"
+              onClick={() => setShowOptions(o => !o)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-600 hover:text-ink-900"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Build around a pack
+              {selectedPacks.length > 0 && (
+                <span className="text-plum-700">· {selectedPacks.length} selected</span>
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showOptions ? 'rotate-180' : ''}`} />
+            </button>
+            {showOptions && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {packs.map(p => {
+                  const on = selectedPacks.includes(p.slug);
+                  return (
+                    <button
+                      key={p.slug}
+                      type="button"
+                      disabled={generating}
+                      onClick={() => setSelectedPacks(s =>
+                        on ? s.filter(x => x !== p.slug) : [...s, p.slug])}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 ${
+                        on
+                          ? 'border-plum-500/40 bg-plum-500/10 text-plum-700'
+                          : 'border-stone-200 text-ink-600 hover:bg-sand-50'
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+                <p className="basis-full text-[11px] text-ink-600 mt-0.5">
+                  Selected packs are added to your library, and the week is built around them. Add notes above — e.g. “fasting Tuesday &amp; Wednesday breakfast”.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={handleGenerate}
